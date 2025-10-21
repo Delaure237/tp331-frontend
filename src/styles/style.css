@@ -1,0 +1,273 @@
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+
+/*
+  ===================================================================
+  PALETTE DE COULEURS CUSTOM
+  Conversion HEX vers HSL pour Tailwind/shadcn:
+  - Main #058D66 -> 165 90% 29%
+  - Red #F53F3F -> 0 91% 60%
+  - Dark Gray #3E3E3E -> 0 0% 25% (Foreground)
+  - Gray #6F6F6F -> 0 0% 44% (Muted Foreground)
+  - Bluish Gray #86909C -> 216 12% 57% (Border/Secondary)
+  - Black #2A303C -> 219 23% 20% (Dark Background)
+  ===================================================================
+*/
+
+:root {
+
+  /* COULEURS CLAIRES (LIGHT MODE) */
+
+  /* Main Green (Primary) et Red (Destructive) */
+  --primary: 165 90% 29%;
+  --primary-foreground: 0 0% 100%;
+
+  --destructive: 0 91% 60%;
+  --destructive-foreground: 0 0% 100%;
+
+  /* Fonds et Texte */
+  --background: 0 0% 100%; /* Blanc */
+  --foreground: 0 0% 25%; /* Dark Gray #3E3E3E */
+
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 25%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 25%;
+
+  /* Gris et Secondaire */
+  --secondary: 216 12% 57%; /* Bluish Gray #86909C */
+  --secondary-foreground: 0 0% 25%;
+
+  --muted: 210 40% 96.1%; /* Gris très clair par défaut (inchangé) */
+  --muted-foreground: 0 0% 44%; /* Gray #6F6F6F */
+
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+
+  /* Bordures et Anneaux */
+  --border: 216 12% 57%; /* Bluish Gray #86909C */
+  --input: 216 12% 57%;
+  --ring: 165 90% 29%; /* Primary */
+
+  --radius: 0.5rem;
+
+
+  --chart-1: 12 76% 61%;
+  --chart-2: 173 58% 39%;
+  --chart-3: 197 37% 24%;
+  --chart-4: 43 74% 66%;
+  --chart-5: 275 66% 45%;
+}
+
+
+.dark {
+  /* COULEURS SOMBRE (DARK MODE) */
+
+  --primary: 165 90% 29%;
+  --primary-foreground: 0 0% 100%;
+
+  --destructive: 0 91% 60%;
+  --destructive-foreground: 0 0% 100%;
+
+  --background: 219 23% 20%; /* Black #2A303C */
+  --foreground: 210 20% 98%;
+
+  --card: 219 23% 20%;
+  --card-foreground: 210 20% 98%;
+
+  --popover: 219 23% 20%;
+  --popover-foreground: 210 20% 98%;
+
+  --secondary: 0 0% 30%; /* Gris foncé (pour le contraste) */
+  --secondary-foreground: 210 20% 98%;
+
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 20% 98%;
+
+  --border: 0 0% 44%; /* Gray #6F6F6F */
+  --input: 0 0% 44%;
+  --ring: 165 90% 29%;
+}
+
+/* RÈGLES DE STYLE EXISTANTES (NON MODIFIÉES) */
+
+thead th {
+  background-color: #e5e7eb !important;
+
+  color: #6b7280 !important;
+  padding-top: 0.75rem !important;
+  padding-bottom: 0.75rem !important;
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+}
+
+
+thead tr:first-child th:first-child {
+  border-top-left-radius: 1rem !important;
+  border-bottom-left-radius: 1rem !important;
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+
+
+thead tr:first-child th:last-child {
+  border-top-right-radius: 1rem !important;
+  border-bottom-right-radius: 1rem !important;
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+}
+
+body {
+  font-family: "Poppins", sans-serif;
+  margin: 0;
+
+}
+
+
+aside::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+  transition: opacity 0.3s;
+  opacity: 0;
+}
+
+aside:hover::-webkit-scrollbar {
+  opacity: 1;
+}
+
+aside::-webkit-scrollbar-thumb {
+  background-color: rgba(59, 130, 246, 0.8);
+  border-radius: 10px;
+}
+
+aside::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+/* Pour Firefox */
+aside {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(59,130,246,0.8) transparent;
+  transition: scrollbar-color 0.3s;
+}
+
+aside:hover {
+  scrollbar-color: rgba(59,130,246,0.8) transparent;
+}
+
+aside:not(:hover) {
+  scrollbar-color: transparent transparent;
+}
+
+::-webkit-scrollbar {
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #3b82f6;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes bounceOnce {
+  0%, 100% {
+    transform: translateY(0);
+    animation-timing-function: ease-out;
+  }
+  50% {
+    transform: translateY(-5px);
+    animation-timing-function: ease-in;
+  }
+}
+
+.animate-bounce.once {
+  animation: bounceOnce 0.6s ease-in-out 2;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #e0e7ff;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #3b82f6;
+  border-radius: 4px;
+  border: 2px solid #e0e7ff;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #2563eb;
+}
+
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #3b82f6 #e0e7ff;
+}
+
+
+.custom-scrollbar1::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+  transition: opacity 0.3s;
+  opacity: 0;
+}
+
+.custom-scrollbar1:hover::-webkit-scrollbar {
+  opacity: 1;
+}
+
+.custom-scrollbar1::-webkit-scrollbar-thumb {
+  background-color: rgba(59, 130, 246, 0.8);
+  border-radius: 99999px;
+}
+
+.custom-scrollbar1::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+
+.custom-scrollbar1 {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(59,130,246,0.8) transparent;
+  transition: scrollbar-color 0.3s;
+}
+
+.custom-scrollbar1:hover {
+  scrollbar-color: rgba(59,130,246,0.8) transparent;
+}
+
+.custom-scrollbar1:not(:hover) {
+  scrollbar-color: transparent transparent;
+}
+
+::-webkit-scrollbar {
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #3b82f6;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
