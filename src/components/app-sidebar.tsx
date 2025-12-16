@@ -1,9 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client"
 
 import * as React from "react"
-import { Dispatch, SetStateAction } from "react"
 import {
     LayoutGrid,
     Users,
@@ -12,29 +10,34 @@ import {
     MessageSquare,
     Settings,
     HelpCircle,
-    FileText,
-    BarChart3,
     UserCheck,
     Briefcase,
 } from "lucide-react"
+import { usePathname } from "next/navigation"
 
 import { NavMain } from "@/components/nav-main"
-// Assurez-vous d'avoir le composant NavUser:
-// import { NavUser } from "@/components/nav-user"
+import { cn } from "@/lib/utils"
 
-// --- DÉBUT DES SIMULATIONS D'IMPORTATION ---
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const NavUser = (props: any) => (
+
+interface NavUserProps {
+    user: {
+        name: string;
+        email: string;
+        avatar: string;
+    };
+}
+
+const NavUser: React.FC<NavUserProps> = ({ user }) => (
     <div className="flex items-center gap-2">
-        <img src={props.user.avatar} alt={props.user.name} className="size-8 rounded-full" />
-        <div className="flex flex-col">
-            <span className="font-semibold">{props.user.name}</span>
-            <span className="text-xs text-gray-500">{props.user.email}</span>
+        <img src={user.avatar} alt={user.name} className="size-8 rounded-full" />
+        {/* Le texte est caché en mode collapse */}
+        <div className="flex flex-col group-data-[state=collapsed]/sidebar-wrapper:hidden">
+            <span className="font-semibold">{user.name}</span>
+            <span className="text-xs text-gray-500">{user.email}</span>
         </div>
     </div>
 );
 // --- FIN DES SIMULATIONS ---
-
 
 import {
     Sidebar,
@@ -43,25 +46,24 @@ import {
     SidebarHeader,
     SidebarRail,
     NavItemLabel,
+    SidebarTrigger, // Composant Trigger importé
+    useSidebar, // useSidebar importé pour l'état
 } from "@/components/ui/sidebar"
 
 
-export interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
-    isCollapsed: boolean;
-    setIsCollapsed: Dispatch<SetStateAction<boolean>>;
-}
+// ✅ CORRECTION: Utilisation du type Props du composant Sidebar
+export type AppSidebarProps = React.ComponentProps<typeof Sidebar>
 
 const data = {
     user: {
         name: "Fuad",
         email: "fuad@hospi-care.com",
-        avatar: "/avatars/fuad.jpg", // Changez ceci si besoin
+        avatar: "/avatars/fuad.jpg",
     },
 
     navMain: [
-        { title: "Accueil", url: "/dashboard", icon: LayoutGrid, isActive: false, items: [] },
-        // L'élément "Patients" est actif pour la surbrillance
-        { title: "Patients", url: "/dashboard/patients", icon: Users, isActive: true, items: [] },
+        { title: "Accueil", url: "/dashboard/overview", icon: LayoutGrid, items: [] },
+        { title: "Patients", url: "/dashboard/patients", icon: Users, items: [] },
         { title: "Rendez-vous", url: "/dashboard/appointments", icon: Calendar, items: [] },
         { title: "Paiements", url: "/dashboard/payments", icon: CreditCard, items: [] },
         { title: "Messages", url: "/dashboard/messages", icon: MessageSquare, badge: 3, items: [] },
@@ -79,25 +81,37 @@ const data = {
 }
 
 
-export function AppSidebar({ isCollapsed, setIsCollapsed, ...props }: AppSidebarProps) {
-    return (
-        <Sidebar>
+// La fonction ne reçoit plus les props d'état manuellement
+export function AppSidebar(props: AppSidebarProps) {
+    const pathname = usePathname();
+    // L'état est géré par le contexte du SidebarProvider
+    const { state } = useSidebar();
+    const isCollapsed = state === "collapsed";
 
+    return (
+        // Les props restantes (variant, side, collapsible, etc.) sont passées ici
+        <Sidebar {...props}>
+
+            {/* Intégration du Trigger dans l'en-tête */}
             <SidebarHeader>
-                 {/* Insérez le Logo ici */}
+                {/* 1. Logo/Titre: Rendu conditionnel pour l'état réduit */}
+                <div className={cn("flex items-center gap-2 transition-opacity duration-200", isCollapsed && "opacity-0 w-0 h-0 overflow-hidden")}>
+                    <span className="font-bold text-lg">HospiCare</span>
+                </div>
+
+                {/* 2. Bouton de Collapse: Toujours visible */}
+                <SidebarTrigger />
             </SidebarHeader>
 
             <SidebarContent>
-
                 <NavItemLabel>PRINCIPAL</NavItemLabel>
-                <NavMain items={data.navMain} />
+                <NavMain items={data.navMain} pathname={pathname} />
 
                 <NavItemLabel>CATALOGUE</NavItemLabel>
-                <NavMain items={data.navCatalog} />
+                <NavMain items={data.navCatalog} pathname={pathname} />
 
                 <NavItemLabel>AIDE & PARAMÈTRES</NavItemLabel>
-                <NavMain items={data.navSettings} />
-
+                <NavMain items={data.navSettings} pathname={pathname} />
             </SidebarContent>
 
             <SidebarFooter>

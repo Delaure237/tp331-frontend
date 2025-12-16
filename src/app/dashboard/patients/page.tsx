@@ -1,54 +1,76 @@
-// app/dashboard/patients/page.tsx
-import { Button } from "@/components/ui/button" 
-import { Input } from "@/components/ui/input"
-import { Separator } from "@/components/ui/separator"
-import { Search, PlusCircle } from "lucide-react"
-import * as React from "react"
+'use client';
 
+import React, { useState, useEffect } from "react";
+import PatientStatCard from "@/components/stat-cards/patient-stat-card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { Search, PlusCircle } from "lucide-react";
+import { PatientsTable } from "@/app/_components/patient/patients-table";
+import { Patient } from "@/schemas/patient-schema";
 
+// --- Mock Stats ---
+const mockPatientStats = [
+  { iconKey: "users", title: "Patients Totaux", count: 3500, period: "All Time", trend: "up", percentage: "+2.5", subtitle: "vs mois dernier", perspective: "Global" },
+  { iconKey: "userPlus", title: "Nouveaux Patients (30J)", count: 125, period: "This month", trend: "up", percentage: "+15", subtitle: "vs mois dernier", perspective: "Acquisition" },
+  { iconKey: "fileText", title: "Prescriptions en Cours", count: 480, period: "Today", trend: "down", percentage: "-0.8", subtitle: "vs hier", perspective: "Activité" },
+  { iconKey: "clock", title: "Rendez-vous Aujourd'hui", count: 18, period: "Today", trend: "up", percentage: "+5", subtitle: "vs hier", perspective: "Planification" },
+];
 
 export default function PatientsPage() {
-  return (
-    <div className="flex flex-col gap-6 p-4 md:p-6">
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
 
-      {/* 1. En-tête de la page */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Liste des Patients</h1>
-        <Button size="sm" className="h-8 gap-1">
-          <PlusCircle className="h-3.5 w-3.5" />
-          <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-            Ajouter Patient
-          </span>
-        </Button>
+  // Exemple fetch mock ou API
+  useEffect(() => {
+    // Simuler fetch patients
+    setPatients([
+      { patientFirstName: "Eric", patientLastName: "Ngatchou", address: "Yaoundé", email: "eric@example.com", phone: "677000000", sex: "Male", dateOfBirth: new Date(), bloodGroup: "O+", height: 175, weight: 70 },
+      { patientFirstName: "Marie", patientLastName: "Tchoumi", address: "Douala", email: "marie@example.com", phone: "699000000", sex: "Female", dateOfBirth: new Date(), bloodGroup: "A+", height: 165, weight: 60 },
+    ]);
+  }, []);
+
+  const filteredPatients = patients.filter(
+    (p) =>
+      p.patientFirstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.patientLastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.phone?.includes(searchTerm)
+  );
+
+  const handleAddPatientSuccess = (newPatient: Patient) => {
+    setPatients((prev) => [...prev, newPatient]);
+  };
+
+  return (
+    <div className="flex flex-col gap-6 p-2 md:p-2">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-semibold">Tableau de Bord Patients</h1>
+
       </div>
 
       <Separator />
 
-      {/* 2. Barre de recherche et filtres */}
-      <div className="flex items-center gap-4">
-        <div className="relative w-full max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Rechercher par nom, ID ou tél..."
-            className="w-full rounded-lg bg-background pl-8"
-          />
-        </div>
-        {/* Vous pouvez ajouter des filtres ici (ex: un composant Select pour le statut) */}
-        {/* <SelectFilter /> */}
+      {/* Stat Cards */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {mockPatientStats.map((stat, idx) => (
+          <PatientStatCard key={idx} {...stat} isPeriodSelectorVisible={true} />
+        ))}
       </div>
 
-      {/* 3. Contenu principal : Tableau des Patients */}
-      <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
-        {/* Ici, vous inséreriez le composant qui affiche le tableau.
-          Pour l'instant, c'est un simple placeholder.
-        */}
-        <div className="p-6 h-[70vh] flex items-center justify-center text-muted-foreground">
-          {/* <PatientsTable /> */}
-          Tableau des patients à implémenter ici.
-        </div>
+
+      {/* Patients Table */}
+      <div className="rounded-xl border-none bg-card text-card-foreground shadow-sm overflow-auto max-h-[70vh] ">
+        {filteredPatients.length === 0 ? (
+          <div className="p-6 text-center text-muted-foreground">Aucun patient trouvé.</div>
+        ) : (
+          <PatientsTable data={filteredPatients} />
+        )}
       </div>
+
+      {/* Add Patient Modal */}
 
     </div>
-  )
+  );
 }

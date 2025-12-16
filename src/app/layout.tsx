@@ -1,7 +1,13 @@
-
-
+// app/layout.tsx
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
+
+import { NuqsAdapter } from "nuqs/adapters/next/app";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { ReactQueryProvider } from "@/providers/react-query-provider";
+import { AuthProvider } from "@/context/auth-context";
+
+import "@/app/global.css";
 
 const poppins = Poppins({
   variable: "--font-poppins",
@@ -16,14 +22,21 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="fr" className={poppins.variable}>
-      <body>
-
-        {children}
+    <html lang="fr" className={`${poppins.variable} h-full w-full`}>
+      <body className="m-0 p-0 antialiased h-full w-full overflow-x-hidden">
+        <AuthProvider>
+          <ReactQueryProvider>
+            <NuqsAdapter>
+              <SidebarProvider>
+                {children}
+              </SidebarProvider>
+            </NuqsAdapter>
+          </ReactQueryProvider>
+        </AuthProvider>
       </body>
     </html>
   );

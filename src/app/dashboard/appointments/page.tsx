@@ -1,79 +1,76 @@
-"use client"
+"use client";
 
-import { AppSidebar } from "@/components/app-sidebar"
-import {
-    Breadcrumb,
-    BreadcrumbItem,
-    BreadcrumbLink,
-    BreadcrumbList,
-    BreadcrumbPage,
-    BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
-import { Separator } from "@/components/ui/separator"
-import {
-    SidebarInset,
-    SidebarProvider,
-    SidebarTrigger,
-    useSidebar,
-} from "@/components/ui/sidebar"
-import * as React from "react"
+import React, { useState, useEffect } from "react";
+import AppointmentStatCard from "@/components/stat-cards/appointment-stat-card";
+import { Separator } from "@/components/ui/separator";
+import { AppointmentsTable } from "@/app/_components/appointment/appointments-table";
+import { AppointmentRowData } from "@/app/_components/appointment/appointments-table-columns";
 
-// Le composant client qui gère la mise en page de l'application
-function DashboardLayout() {
-    // 🎯 utilise le hook du contexte pour contrôler l'état de la sidebar
-    const { open, setOpen, toggleSidebar } = useSidebar();
+// --- Mock Stats pour les cards ---
+const mockAppointmentStats = [
+    { iconKey: "confirmed", title: "Rendez-vous Confirmés", count: 42, period: "Aujourd'hui", trend: "up", percentage: 12, subtitle: "vs hier", perspective: "Confirmation" },
+    { iconKey: "pending", title: "En Attente", count: 18, period: "Cette semaine", trend: "stable", percentage: 0, subtitle: "vs semaine dernière", perspective: "Files d'attente" },
+    { iconKey: "canceled", title: "Annulés", count: 6, period: "Ce mois", trend: "down", percentage: -4, subtitle: "vs mois dernier", perspective: "Annulations" },
+    { iconKey: "late", title: "Retards", count: 3, period: "Aujourd'hui", trend: "up", percentage: 5, subtitle: "vs hier", perspective: "Ponctualité" },
+];
 
-    // Si la sidebar est ouverte (open=true), elle n'est pas "collapsed" (isCollapsed=false)
-    const isCollapsed = !open;
+// --- Mock Data pour la table ---
+const mockAppointments: AppointmentRowData[] = [
+    { id: "APPT001", patientName: "Eric Ngatchou", type: "Consultation", dateTime: new Date(), status: "Confirmed" },
+    { id: "APPT002", patientName: "Marie Tchoumi", type: "Vaccination", dateTime: new Date(), status: "Pending" },
+    { id: "APPT003", patientName: "Paul Etoundi", type: "Consultation", dateTime: new Date(), status: "Canceled" },
+    { id: "APPT004", patientName: "Anne Fotso", type: "Contrôle", dateTime: new Date(), status: "Late" },
+];
+
+export default function AppointmentPage() {
+    const [selectedPeriod, setSelectedPeriod] = useState("Aujourd'hui");
+    const [appointments, setAppointments] = useState<AppointmentRowData[]>([]);
+
+    // Simuler fetch
+    useEffect(() => {
+        setAppointments(mockAppointments);
+    }, []);
+
+    const handleAddAppointmentSuccess = (newAppointment: AppointmentRowData) => {
+        setAppointments((prev) => [...prev, newAppointment]);
+    };
+
+    const handleDeleteAppointmentSuccess = () => {
+        // Ici tu peux re-fetch ou mettre à jour la liste
+    };
 
     return (
-        <>
-            {/* La Sidebar */}
-            <AppSidebar isCollapsed={isCollapsed} setIsCollapsed={setOpen} />
+        <div className="flex flex-col gap-6 p-4 w-full h-full ">
 
-            {/* 🎯 Le contenu principal qui s'ajuste à la Sidebar */}
-            <SidebarInset>
-                <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-                    <div className="flex items-center gap-2 px-4">
-                        {/* 🎯 Le SidebarTrigger appelle la fonction pour basculer l'état */}
-                        <SidebarTrigger className="-ml-1" onClick={toggleSidebar} />
-                        <Separator
-                            orientation="vertical"
-                            className="mr-2 data-[orientation=vertical]:h-4"
-                        />
-                        <Breadcrumb>
-                            <BreadcrumbList>
-                                <BreadcrumbItem className="hidden md:block">
-                                    <BreadcrumbLink href="#">
-                                        Building Your Application
-                                    </BreadcrumbLink>
-                                </BreadcrumbItem>
-                                <BreadcrumbSeparator className="hidden md:block" />
-                                <BreadcrumbItem>
-                                    <BreadcrumbPage>Data Fetching</BreadcrumbPage>
-                                </BreadcrumbItem>
-                            </BreadcrumbList>
-                        </Breadcrumb>
-                    </div>
-                </header>
-                <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-                    <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-                        <div className="bg-muted/50 aspect-video rounded-xl" />
-                        <div className="bg-muted/50 aspect-video rounded-xl" />
-                        <div className="bg-muted/50 aspect-video rounded-xl" />
-                    </div>
-                    <div className="bg-muted/50 min-h-[100vh] flex-1 rounded-xl md:min-h-min" />
-                </div>
-            </SidebarInset>
-        </>
-    )
-}
+     <h2 className= "font-bold  text-2xl">Gestion  des Rendez vous</h2>
+  
 
-// Le composant Server (Page) enveloppe le tout dans le provider
-export default function Page() {
-    return (
-        <SidebarProvider>
-            <DashboardLayout />
-        </SidebarProvider>
-    )
+            {/* Stat Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+                {mockAppointmentStats.map((stat, i) => (
+                    <AppointmentStatCard
+                        key={i}
+                        {...stat}
+                        onPeriodChange={(p) => setSelectedPeriod(p)}
+                        isPeriodSelectorVisible={true}
+                    />
+                ))}
+            </div>
+
+            {/* Table des rendez-vous */}
+            <div className="rounded-xl border-none bg-card text-card-foreground shadow-sm overflow-auto max-h-[70vh]">
+                {appointments.length === 0 ? (
+                    <div className="p-6 text-center text-muted-foreground">Aucun rendez-vous trouvé.</div>
+                ) : (
+                    <AppointmentsTable
+                        data={appointments}
+                        pageCount={1}
+                        onAddAppointmentSuccess={handleAddAppointmentSuccess}
+                        onDeleteAppointmentSuccess={handleDeleteAppointmentSuccess}
+                    />
+                )}
+            </div>
+
+        </div>
+    );
 }

@@ -1,100 +1,122 @@
 // src/components/forms/register-multistep.tsx
-
 'use client';
 
-import * as React from 'react';
-import { useState } from 'react';
+import React from 'react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';
 import { cn } from "@/lib/utils";
-import StepHospitalInfo from "@/components/forms/step-hospital-info";
-import StepAuthInfo from "@/components/forms/step-auth-info";
 import { Progress } from "@/components/ui/progress";
 
+import StepHospitalInfo from "@/components/forms/step-hospital-info";
+import StepAuthInfo from "@/components/forms/step-auth-info";
 
-interface FormState {
-  hospitalName: string;
-  hospitalEmail: string;
-  hospitalLogo: FileList | null;
-  hospitalImages: FileList | null;
-  adminRole: 'Administrator' | 'Doctor' | 'Cashier';
-  adminEmail: string;
-  password: string;
-  confirmPassword: string;
-}
+import { registerHospitalApi } from '@/api/auth-api';
+import { useRegistrationStore } from "@/store/registration-store";
+import { useAuth } from '@/context/auth-context';
+import { IRegistrationFormData } from '@/store/registration-store';
 
 export function RegisterMultistep({ className }: React.ComponentProps<'div'>) {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState<Partial<FormState>>({});
-  const totalSteps = 2;
-  const progressValue = (currentStep / totalSteps) * 100;
+  const router = useRouter();
+  const { refreshUser } = useAuth();
 
-  const handleNextStep = (data: Partial<FormState>) => {
-    setFormData(prev => ({ ...prev, ...data }));
-    if (currentStep < totalSteps) {
-      setCurrentStep(prev => prev + 1);
-    } else {
-      // Étape finale : Soumission des données
-      console.log('FINAL SUBMISSION DATA:', { ...formData, ...data });
-      alert('Inscription terminée! Voir la console pour les données.');
+  
+  const {
+    steps,
+    currentStepIndex,
+    formData,
+    updateFormData,
+    nextStep,
+    previousStep,
+    reset,
+  } = useRegistrationStore();
+
+  const totalSteps = steps.length;
+  const currentStep = steps[currentStepIndex];
+  const progressValue = ((currentStepIndex + 1) / totalSteps) * 100;
+
+  // Typage strict basé sur votre interface IRegistrationFormData
+  const handleNext = (data: Partial<IRegistrationFormData>) => {
+    updateFormData(data);
+    nextStep();
+  };
+
+  const handleFinalSubmit = async (lastStepData: Partial<IRegistrationFormData>) => {
+    const finalData = { ...formData, ...lastStepData };
+    const loadingToast = toast.loading("Création de votre établissement...");
+
+    try {
+      const submissionData = new FormData();
+
+      // On construit le FormData
+      Object.entries(finalData).forEach(([key, value]) => {
+        if (value instanceof File) {
+          submissionData.append(key, value);
+        } else if (value !== undefined && value !== null) {
+          submissionData.append(key, String(value));
+        }
+      });
+
+      // Appel API
+      await registerHospitalApi(submissionData);
+
+      // On rafraîchit l'état global de l'utilisateur
+      await refreshUser();
+
+      toast.success("Inscription réussie !", { id: loadingToast });
+
+      // On utilise 'reset()' ici
+      reset();
+
+      router.push('/dashboard/overview');
+
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Une erreur est survenue";
+      toast.error(message, { id: loadingToast });
     }
   };
-
-  const goToPreviousStep = () => {
-    setCurrentStep(prev => Math.max(1, prev - 1));
-  };
-
-  const getTitle = () => {
-    switch (currentStep) {
-      case 1:
-        return {
-          title: "Informations de l'Hôpital",
-          description: "Veuillez fournir les détails de votre établissement de santé."
-        };
-      case 2:
-        return {
-          title: "Authentification de l'Administrateur",
-          description: "Définissez votre rôle et vos identifiants de connexion."
-        };
-      default:
-        return { title: "", description: "" };
-    }
-  };
-
 
   return (
-    // 'w-full flex-1 h-full' permet au composant de prendre toute la place dans le conteneur parent (SignupPage)
-    <div className={cn("flex flex-col gap-6 w-full flex-1 h-full", className)}>
-
-      {/* Barre de progression et numéro d'étape */}
-      <div className="w-full space-y-2 shrink-0">
-        <p className="text-sm font-medium text-center">Étape {currentStep} sur {totalSteps}</p>
-        <Progress value={progressValue} className="h-2" />
+    <div className={cn("flex flex-col gap-6 w-full h-full", className)}>
+      {/* Progress */}
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-center text-muted-foreground">
+          Étape {currentStepIndex + 1} sur {totalSteps}
+        </p>
+        <Progress value={progressValue} className="h-2 w-full" />
       </div>
 
-      {/* Titre de l'étape */}
-      <div className="flex flex-col items-center gap-1 text-center shrink-0">
-        <h1 className="text-2xl font-bold">{getTitle().title}</h1>
-        <p className="text-muted-foreground text-sm text-balance">
-          {getTitle().description}
+      {/* Header */}
+      <div className="text-center space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight">{currentStep.title}</h1>
+        <p className="text-sm text-muted-foreground">
+          {currentStep.description}
         </p>
       </div>
 
-      {/* Conteneur des étapes du formulaire - utilise le reste de l'espace vertical disponible */}
-      <div className="flex-1 overflow-auto">
-        {currentStep === 1 && (
+      {/* Steps Content */}
+      <div className="flex-1 overflow-y-auto">
+        {currentStep.id === 'hospital-info' && (
           <StepHospitalInfo
             initialData={formData}
-            onSubmit={handleNextStep}
+            onSubmit={handleNext}
           />
         )}
 
-        {currentStep === 2 && (
+        {currentStep.id === 'auth-info' && (
           <StepAuthInfo
             initialData={formData}
-            onSubmit={handleNextStep}
-            goToPreviousStep={goToPreviousStep}
+            onSubmit={handleFinalSubmit}
+            goToPreviousStep={previousStep}
           />
         )}
       </div>
+
+      {/* Footer / Privacy */}
+      {currentStepIndex === 0 && (
+        <p className="text-xs text-center text-muted-foreground px-6 mt-4">
+          En continuant, vous acceptez nos conditions d&apos;utilisation et notre politique de confidentialité.
+        </p>
+      )}
     </div>
   );
 }

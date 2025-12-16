@@ -37,7 +37,7 @@ export function LoginForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="w-full max-w-md mx-auto">
+      <Card className="w-full max-w-md mx-auto  border-none">
         <CardHeader className="p-6 pb-2">
 
           <div className="flex justify-center mb-2">
@@ -129,7 +129,7 @@ export function LoginForm({
 
               <Field className="space-y-3 pt-2">
 
-                <Button type="submit" className="w-full bg-[#058D66] hover:bg-[#058D66]/90">
+                <Button type="submit" className="w-full bg-[#058D66] hover:bg-[#058D66]/90 text-white">
                   Se connecter
                 </Button>
 

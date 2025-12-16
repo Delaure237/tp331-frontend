@@ -11,8 +11,7 @@ export default function SignupPage() {
     const ALT_TEXT = "Image d'arrière-plan de l'hôpital";
 
     return (
-        // 🎯 CORRECTION: Le conteneur MINIMAL pour la page Signup
-        // Il doit occuper tout l'espace (w-full h-full) pour que la grille ci-dessous fonctionne.
+        
         <div className="w-full h-full">
 
             {/* La grille 50/50 doit être pleine hauteur */}

@@ -3,10 +3,10 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
-import { PanelLeftIcon } from "lucide-react"
+import { PanelLeftIcon, LucideIcon } from "lucide-react" // Ajout de LucideIcon
 
-import { useIsMobile } from "@/hooks/use-mobile"
-import { cn } from "@/lib/utils"
+import { useIsMobile } from "@/hooks/use-mobile" // Assurez-vous que ce hook existe
+import { cn } from "@/lib/utils" // Assurez-vous que cn existe
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
@@ -27,15 +27,20 @@ import {
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH = "16rem"
+
+// Définitions des largeurs
+// 🚀 MODIFICATION CLÉ : Largeur déployée ajustée à 14rem (224px)
+const SIDEBAR_WIDTH = "14rem" // Largeur déployée (224px)
 const SIDEBAR_WIDTH_MOBILE = "18rem"
-const SIDEBAR_WIDTH_ICON = "3rem"
+const SIDEBAR_WIDTH_ICON = "3.5rem" // Largeur réduite (56px)
+
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
+// --- CONTEXTE ET HOOKS ---
 type SidebarContextProps = {
     state: "expanded" | "collapsed"
     open: boolean
-    setOpen: (value: boolean | ((value: boolean) => boolean)) => void // Correction de la signature du type
+    setOpen: (value: boolean | ((value: boolean) => boolean)) => void
     openMobile: boolean
     setOpenMobile: React.Dispatch<React.SetStateAction<boolean>>
     isMobile: boolean
@@ -53,6 +58,7 @@ function useSidebar() {
     return context
 }
 
+// --- PROVIDER ---
 function SidebarProvider({
     defaultOpen = true,
     open: openProp,
@@ -66,13 +72,13 @@ function SidebarProvider({
     open?: boolean
     onOpenChange?: (open: boolean) => void
 }) {
+    // NOTE: useIsMobile doit être défini dans votre projet ou remplacé par un simple useState
     const isMobile = useIsMobile()
     const [openMobile, setOpenMobile] = React.useState(false)
 
     const [_open, _setOpen] = React.useState(defaultOpen)
     const open = openProp ?? _open
 
-    // Assure que setOpen peut prendre soit une valeur booléenne, soit une fonction de mise à jour
     const setOpen = React.useCallback(
         (value: boolean | ((value: boolean) => boolean)) => {
             const openState = typeof value === "function" ? value(open) : value
@@ -117,6 +123,7 @@ function SidebarProvider({
             openMobile,
             setOpenMobile,
             toggleSidebar,
+
         }),
         [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
     )
@@ -126,6 +133,7 @@ function SidebarProvider({
             <TooltipProvider delayDuration={0}>
                 <div
                     data-slot="sidebar-wrapper"
+                    data-variant={props.variant}
                     style={
                         {
                             "--sidebar-width": SIDEBAR_WIDTH,
@@ -134,6 +142,7 @@ function SidebarProvider({
                         } as React.CSSProperties
                     }
                     className={cn(
+                        // La classe 'flex' ici est cruciale pour que le layout fonctionne
                         "group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex min-h-svh w-full",
                         className
                     )}
@@ -146,10 +155,11 @@ function SidebarProvider({
     )
 }
 
+// --- SIDEBAR ---
 function Sidebar({
     side = "left",
     variant = "sidebar",
-    collapsible = "icon", // Défaut à "icon" pour l'effet de collapse de l'image
+    collapsible = "icon",
     className,
     children,
     ...props
@@ -209,16 +219,21 @@ function Sidebar({
             data-side={side}
             data-slot="sidebar"
         >
-            {/* 1. Espace/Gap de la sidebar (pousse le contenu) */}
+            {/* 1. Espace/Gap de la sidebar (pousse le contenu) - CORRECTION DE L'ESPACE OK */}
             <div
                 data-slot="sidebar-gap"
                 className={cn(
+                    // Base: Largeur par défaut est la largeur déployée (14rem)
                     "relative w-[var(--sidebar-width)] bg-transparent transition-[width] duration-200 ease-linear",
+
                     "group-data-[collapsible=offcanvas]:w-0",
                     "group-data-[side=right]:rotate-180",
-                    variant === "floating" || variant === "inset"
-                        ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+var(--spacing(4)))]"
-                        : "group-data-[collapsible=icon]:w-[var(--sidebar-width-icon)]"
+
+                    // 🚨 CORRECTION DÉFINITIVE : FORCE w-0 en mode DÉPLOYÉ.
+                    "group-data-[state=expanded]:w-0",
+
+                    // 🚨 CORRECTION DÉFINITIVE : Largeur réduite (3.5rem)
+                    "group-data-[collapsible=icon]:group-data-[state=collapsed]:w-[var(--sidebar-width-icon)]",
                 )}
             />
             {/* 2. Conteneur Fixe de la sidebar */}
@@ -229,9 +244,8 @@ function Sidebar({
                     side === "left"
                         ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
                         : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
-                    // Ajustement des marges/largeurs pour les variantes
                     variant === "floating" || variant === "inset"
-                        ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+var(--spacing(4))+2px)]"
+                        ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+calc(var(--spacing)*4)+2px)]"
                         : "group-data-[collapsible=icon]:w-[var(--sidebar-width-icon)] group-data-[side=left]:border-r group-data-[side=right]:border-l",
                     className
                 )}
@@ -249,12 +263,43 @@ function Sidebar({
     )
 }
 
+// --- SIDEBAR INSET (CORRECTION DE L'ALIGNEMENT DU CONTENU) ---
+function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
+    return (
+        <main
+            data-slot="sidebar-inset"
+            // Le "peer" dans le conteneur parent Sidebar permet de cibler cet élément avec data-state
+            className={cn(
+                // Base: Flex pour prendre l'espace restant et masquer le débordement
+                "relative flex w-full flex-1 flex-col overflow-hidden",
+
+                // 1. Marge DÉPLOYÉE (14rem)
+                // Applique la marge gauche lorsque la sidebar est DÉPLOYÉE.
+                "md:peer-data-[state=expanded]:ml-[var(--sidebar-width)]",
+
+                // 2. Marge RÉDUITE (3.5rem)
+                // 🚨 CORRECTION CLÉ : Applique la marge gauche lorsque la sidebar est RÉDUITE.
+                "md:peer-data-[state=collapsed]:ml-[var(--sidebar-width-icon)]",
+
+                // 3. Logique pour variante "inset" (si vous l'utilisez)
+                "md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-[var(--sidebar-width-icon)]",
+
+                className
+            )}
+            {...props}
+        />
+    )
+}
+
+// --- AUTRES EXPORTATIONS (Raccourcis, Menus, etc.) ---
 function SidebarTrigger({
     className,
     onClick,
     ...props
 }: React.ComponentProps<typeof Button>) {
-    const { toggleSidebar } = useSidebar()
+    const { toggleSidebar, state } = useSidebar()
+
+    const rotationClass = state === "collapsed" ? "rotate-180" : "rotate-0"
 
     return (
         <Button
@@ -262,10 +307,10 @@ function SidebarTrigger({
             data-slot="sidebar-trigger"
             variant="ghost"
             size="icon"
-            className={cn("size-7", className)}
+            className={cn("size-7 transition-transform duration-200", rotationClass, className)}
             onClick={(event) => {
                 onClick?.(event)
-                toggleSidebar() // 🎯 Rend le bouton de collapse fonctionnel
+                toggleSidebar()
             }}
             {...props}
         >
@@ -300,23 +345,6 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
     )
 }
 
-function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
-    return (
-        <main
-            data-slot="sidebar-inset"
-            className={cn(
-                "bg-background relative flex w-full flex-1 flex-col",
-                // 🎯 Classes pour positionner le contenu principal A CÔTÉ de la sidebar (Desktop)
-                "md:peer-data-[variant=sidebar]:ml-[var(--sidebar-width)] md:peer-data-[variant=sidebar]:group-data-[collapsible=icon]:ml-[var(--sidebar-width-icon)]",
-                // Logique pour variante "inset"
-                "md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2",
-                className
-            )}
-            {...props}
-        />
-    )
-}
-
 function SidebarInput({
     className,
     ...props
@@ -336,7 +364,7 @@ function SidebarHeader({ className, ...props }: React.ComponentProps<"div">) {
         <div
             data-slot="sidebar-header"
             data-sidebar="header"
-            className={cn("flex flex-col gap-2 p-2", className)}
+            className={cn("flex items-center justify-between gap-2 p-2", className)}
             {...props}
         />
     )
@@ -509,10 +537,9 @@ function SidebarMenuButton({
     const Comp = asChild ? Slot : "button"
     const { isMobile, state } = useSidebar()
 
-    // 🎯 Correction pour une bande verte plus épaisse :
-    // J'ajoute un padding vertical (py-1.5) et j'ajuste la taille pour l'état actif.
+    // J'utilise le vert #058D66 (couleur primaire type) pour l'état actif
     const activeClasses = isActive
-        ? "bg-[#058D66] text-white hover:bg-[#058D66]/90 hover:text-white data-[active=true]:font-semibold py-1.5"
+        ? "bg-[#058D66] text-white hover:bg-[#058D66]/90 hover:text-white data-[active=true]:font-semibold"
         : "";
 
     const button = (
@@ -551,6 +578,7 @@ function SidebarMenuButton({
             />
         </Tooltip>
     )
+
 }
 
 function SidebarMenuAction({
@@ -594,6 +622,7 @@ function SidebarMenuBadge({
             data-sidebar="menu-badge"
             className={cn(
                 "text-sidebar-foreground pointer-events-none absolute right-1 flex h-5 min-w-5 items-center justify-center rounded-md px-1 text-xs font-medium tabular-nums select-none",
+                // CORRECTION DE L'ERREUR DE PARSING APPLIQUÉE
                 "peer-hover/menu-button:text-sidebar-accent-foreground peer-data-[active=true]/menu-button:text-sidebar-accent-foreground",
                 "peer-data-[size=sm]/menu-button:top-1",
                 "peer-data-[size=default]/menu-button:top-1.5",
@@ -613,7 +642,6 @@ function SidebarMenuSkeleton({
 }: React.ComponentProps<"div"> & {
     showIcon?: boolean
 }) {
-    // Random width between 50 to 90%.
     const width = React.useMemo(() => {
         return `${Math.floor(Math.random() * 40) + 50}%`
     }, [])
@@ -731,4 +759,4 @@ export {
     SidebarTrigger,
     useSidebar,
     SidebarGroupLabel as NavItemLabel,
-}
+};

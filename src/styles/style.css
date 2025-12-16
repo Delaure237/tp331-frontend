@@ -1,19 +1,17 @@
-@import "tailwindcss/base";
-@import "tailwindcss/components";
-@import "tailwindcss/utilities";
+@import "tailwindcss"; /* C'est la nouvelle façon d'importer Tailwind en v4 */
 
 
 /*
-  ===================================================================
-  PALETTE DE COULEURS CUSTOM
-  Conversion HEX vers HSL pour Tailwind/shadcn:
-  - Main #058D66 -> 165 90% 29%
-  - Red #F53F3F -> 0 91% 60%
-  - Dark Gray #3E3E3E -> 0 0% 25% (Foreground)
-  - Gray #6F6F6F -> 0 0% 44% (Muted Foreground)
-  - Bluish Gray #86909C -> 216 12% 57% (Border/Secondary)
-  - Black #2A303C -> 219 23% 20% (Dark Background)
-  ===================================================================
+===================================================================
+PALETTE DE COULEURS CUSTOM
+Conversion HEX vers HSL pour Tailwind/shadcn:
+- Main #058D66 -> 165 90% 29%
+- Red #F53F3F -> 0 91% 60%
+- Dark Gray #3E3E3E -> 0 0% 25% (Foreground)
+- Gray #6F6F6F -> 0 0% 44% (Muted Foreground)
+- Bluish Gray #86909C -> 216 12% 57% (Border/Secondary)
+- Black #2A303C -> 219 23% 20% (Dark Background)
+===================================================================
 */
 
 :root {
