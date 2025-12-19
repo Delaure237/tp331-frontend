@@ -1,83 +1,58 @@
+export type RoleName = 'Hospital Admin' | 'Doctor' | 'Patient' | 'STAFF' | 'Cashier';
+
 export interface Role {
-  id: string;
-  name: 'ADMIN' | 'DOCTOR' | 'PATIENT' | 'STAFF';
+    id: string;
+    name: RoleName;
+}
+
+export interface UserRole {
+    id: string;
+    name: string;
 }
 
 export interface Hospital {
-  id: string;
-  hospitalName: string;
+    id: string;
+    hospitalName: string;
+    hospitalEmail?: string;
 }
 
 export interface PatientProfile {
-  patientId: string;
-  firstName: string;
-  lastName: string;
-  status: string;
+    patientId: string;
+    firstName: string;
+    lastName: string;
+    status: string;
 }
 
 export interface DoctorProfile {
-  doctorId: string;
-  specialty: string;
+    doctorId: string;
+    specialty: string;
 }
 
 export interface User {
-  id: string;
-  email: string;
-
-  role: Role;
-
-  hospital?: Hospital | null;
-
-  patientProfile?: PatientProfile | null;
-  doctorProfile?: DoctorProfile | null;
-}
-// src/types/auth.ts
-
-export interface UserRole {
-  id: string;
-  name: string;
-}
-
-export interface Hospital {
-  id: string;
-  hospitalName: string;
-  hospitalEmail: string;
-}
-
-export interface AuthUser {
-  id: string;
-  email: string;
-  role: UserRole;
-  hospital?: Hospital | null;
+    id: string;
+    email: string;
+    // On supporte les deux formats de l'API
+    role?: Role;
+    roleName?: string;
+    hospital?: Hospital | null;
+    hospitalId?: string;
+    patientProfile?: PatientProfile | null;
+    doctorProfile?: DoctorProfile | null;
 }
 
 export interface AuthResponse {
-  user: AuthUser;
+    user: User;
+    message?: string;
+    success?: boolean;
 }
 
-export interface LoginResponse {
-  message: string;
-  user: AuthUser;
-}
+export interface LoginResponse extends AuthResponse {}
 
 export interface SignupResponse {
-  message: string;
-}
-
-export interface ForgotPasswordResponse {
-  message: string;
-}
-
-export interface ResetPasswordResponse {
-  message: string;
-}
-
-export interface CreateStaffRequest {
-  email: string;
-  roleId: string;
-}
-
-export interface CreateStaffResponse {
-  message: string;
-  userId: string;
+    success: boolean;
+    message: string;
+    data?: {
+        email: string;
+        expiresAt: string;
+    };
 }

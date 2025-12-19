@@ -16,13 +16,14 @@ import {
 } from "@/components/ui/breadcrumb"
 
 import { SidebarInset } from "@/components/ui/sidebar"
+import { NavUser } from "@/components/nav-user" // On importe notre composant NavUser
 
 interface LayoutProps {
     children: React.ReactNode;
 }
 
 /**
- * DashboardContent : Gère l'en-tête (Header) et la zone de contenu défilante.
+ * DashboardContent : Gère l'en-tête (Header) et la zone de contenu.
  */
 function DashboardContent({ children }: LayoutProps) {
     const pathname = usePathname();
@@ -57,16 +58,21 @@ function DashboardContent({ children }: LayoutProps) {
     return (
         <SidebarInset className="relative flex flex-col flex-1 overflow-hidden bg-[#f4f8ff]">
 
-            {/* Header */}
-            <header className="sticky top-0 z-10 flex shrink-0 items-center bg-white/80 backdrop-blur-md border-gray-100 h-16 px-2">
+            {/* Header avec Breadcrumb à gauche et NavUser à droite */}
+            <header className="sticky top-0 z-10 flex shrink-0 items-center justify-between bg-white/80 backdrop-blur-md border-b border-gray-100 h-16 px-6">
                 <Breadcrumb>
                     {getBreadcrumbItems()}
                 </Breadcrumb>
+
+                {/* Profil Utilisateur en position Trailing (droite) */}
+                <div className="flex items-center gap-4">
+                    <NavUser />
+                </div>
             </header>
 
             {/* main */}
             <main className="flex-1 overflow-y-auto max-w-full p-0">
-                <div className="max-w-7xl mx-auto w-full px-2 py-2">
+                <div className="max-w-7xl mx-auto w-full px-4 py-4">
                     {children}
                 </div>
             </main>

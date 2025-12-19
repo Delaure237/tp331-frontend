@@ -1,36 +1,28 @@
-// src/schemas/doctor-schema.ts
 import { z } from "zod";
 
-// Listes exhaustives pour le Select (utilisées pour la validation)
-export const DoctorSpecialist = z.enum([
-    "Urologie", "Dentisterie", "Cardiologie",
-    "Pédiatrie", "Neurologie", "Généraliste",
-    "Dermatologie", "Orthopédie", "Prostate"
-    // ... autres spécialités
-]);
-
-export const DoctorDepartment = z.enum([
-    "Chirurgie", "Médecine interne", "Urologie",
-    "Pédiatrie", "Dermatologie", "Radiologie",
-    "Dentisterie"
-
-]);
-
 export const DoctorSchema = z.object({
-    // BLOC 1
-    name: z.string().min(3, "Le nom doit contenir au moins 3 caractères."),
-    email: z.string().email("Format d'email invalide."),
-    phone: z.string().regex(/^\d{8,}$/, "Numéro de téléphone invalide (au moins 8 chiffres)."),
-    imageUrl: z.string().url("URL de l'image invalide.").optional().or(z.literal("")),
+  id: z.string().optional(),
 
-    // BLOC 2
-    specialist: z.string().min(1, "Le spécialiste est requis."),
-    department: z.string().min(1, "Le département est requis."),
-    degree: z.string().min(2, "Le diplôme est requis (ex: MBBS, MD)."),
-    joinDate: z.date({
-        required_error: "La date d'adhésion est requise.",
-        invalid_type_error: "Format de date invalide.",
-    }),
+  // Informations de base
+  firstName: z.string().min(2, "Le prénom est requis"),
+  lastName: z.string().min(2, "Le nom de famille est requis"),
+  specialty: z.string().min(2, "La spécialité est requise"),
+
+  // Coordonnées (Indispensables pour les externes, optionnelles si liées à un User)
+  phone: z.string().min(5, "Un numéro de téléphone valide est requis").optional().nullable(),
+  email: z.string().email("Email invalide").optional().or(z.literal("")).nullable(),
+
+  // Liaison avec le compte utilisateur (null pour les intervenants externes)
+  userId: z.string().uuid("ID utilisateur invalide").optional().nullable(),
+
+  // ID de l'hôpital (souvent injecté par le contexte)
+  hospitalId: z.string().uuid().optional(),
 });
 
-export type DoctorFormValues = z.infer<typeof DoctorSchema>;
+// Schéma pour l'édition : nécessite l'ID
+export const UpdateDoctorSchema = DoctorSchema.extend({
+  id: z.string({ required_error: "L'identifiant est requis pour la mise à jour" }),
+});
+
+export type Doctor = z.infer<typeof DoctorSchema>;
+export type UpdateDoctor = z.infer<typeof UpdateDoctorSchema>;

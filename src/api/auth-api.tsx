@@ -9,15 +9,18 @@ import {
 } from '@/types/auth';
 import { handleApiResponse } from './api-utils';
 
-const API_URL = process.env.NEXT_PUBLIC_ACTIVE_API_URL;
+/**
+ * 💡 CONSEIL : Utilisez 127.0.0.1 au lieu de localhost pour éviter les erreurs CORS
+ * si vous rencontrez des problèmes de session.
+ */
+const API_URL = "http://localhost:3050";
 
 /* ============================
-   AUTH – PUBLIC
+    AUTH – PUBLIC
 ============================ */
 
 /**
  * LOGIN
- * POST /api/v1/auth/login
  */
 export async function loginApi(email: string, password: string): Promise<LoginResponse> {
   const response = await fetch(`${API_URL}/api/v1/auth/login`, {
@@ -31,13 +34,27 @@ export async function loginApi(email: string, password: string): Promise<LoginRe
 }
 
 /**
- * SIGNUP HOSPITAL
- * POST /api/v1/auth/signup/hospital
+ * VERIFY OTP (Validation de compte & Reset)
+ * Cet endpoint active le compte et pose le cookie de session après l'inscription.
+ */
+export async function verifyOtpApi(email: string, otp: string): Promise<LoginResponse> {
+  const response = await fetch(`${API_URL}/api/v1/auth/verify-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, otp }),
+    credentials: 'include',
+  });
+
+  return handleApiResponse<LoginResponse>(response);
+}
+
+/**
+ * SIGNUP HOSPITAL (Utilise FormData pour gérer les fichiers)
  */
 export async function registerHospitalApi(formData: FormData): Promise<SignupResponse> {
   const response = await fetch(`${API_URL}/api/v1/auth/signup/hospital`, {
     method: 'POST',
-    body: formData,
+    body: formData, // Pas de Content-Type ici, le navigateur le définit avec le boundary
     credentials: 'include',
   });
 
@@ -46,13 +63,14 @@ export async function registerHospitalApi(formData: FormData): Promise<SignupRes
 
 /**
  * SIGNUP PATIENT
- * POST /api/v1/auth/signup/patient
  */
 export async function registerPatientApi(payload: {
   email: string;
   password: string;
   firstName: string;
   lastName: string;
+  idNumber: string;
+  sex: string;
 }): Promise<SignupResponse> {
   const response = await fetch(`${API_URL}/api/v1/auth/signup/patient`, {
     method: 'POST',
@@ -65,8 +83,7 @@ export async function registerPatientApi(payload: {
 }
 
 /**
- * FORGOT PASSWORD
- * POST /api/v1/auth/forgot-password
+ * FORGOT PASSWORD (Demande l'envoi d'un OTP)
  */
 export async function forgotPasswordApi(email: string): Promise<ForgotPasswordResponse> {
   const response = await fetch(`${API_URL}/api/v1/auth/forgot-password`, {
@@ -79,11 +96,11 @@ export async function forgotPasswordApi(email: string): Promise<ForgotPasswordRe
 }
 
 /**
- * RESET PASSWORD
- * POST /api/v1/auth/reset-password
+ * RESET PASSWORD (Utilise l'OTP reçu par mail)
  */
 export async function resetPasswordApi(payload: {
-  token: string;
+  email: string;
+  otp: string;
   newPassword: string;
 }): Promise<ResetPasswordResponse> {
   const response = await fetch(`${API_URL}/api/v1/auth/reset-password`, {
@@ -95,17 +112,30 @@ export async function resetPasswordApi(payload: {
   return handleApiResponse<ResetPasswordResponse>(response);
 }
 
+/**
+ * LOGOUT
+ */
+export async function logoutApi(): Promise<{ success: boolean }> {
+  const response = await fetch(`${API_URL}/api/v1/auth/logout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+  });
+
+  return handleApiResponse<{ success: boolean }>(response);
+}
+
 /* ============================
-   AUTH – PROTECTED
+    AUTH – PROTECTED
 ============================ */
 
 /**
- * CURRENT USER
- * GET /api/v1/auth/me
+ * CURRENT USER (Profil)
  */
 export async function getCurrentUserApi(): Promise<AuthResponse> {
   const response = await fetch(`${API_URL}/api/v1/auth/me`, {
     method: 'GET',
+    headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
   });
 
@@ -113,8 +143,7 @@ export async function getCurrentUserApi(): Promise<AuthResponse> {
 }
 
 /**
- * CHANGE PASSWORD
- * PATCH /api/v1/auth/change-password
+ * CHANGE PASSWORD (Depuis le profil utilisateur)
  */
 export async function changePasswordApi(payload: {
   currentPassword: string;
@@ -131,8 +160,7 @@ export async function changePasswordApi(payload: {
 }
 
 /**
- * CREATE STAFF (Hospital Admin)
- * POST /api/v1/auth/staff/create
+ * CREATE STAFF (Hospital Admin uniquement)
  */
 export async function createStaffUserApi(
   payload: CreateStaffRequest

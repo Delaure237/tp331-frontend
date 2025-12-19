@@ -1,159 +1,92 @@
 'use client';
 
-import * as React from 'react';
-import { useState } from 'react';
-import { Button } from "@/components/ui/button";
-import { Field, FieldGroup, FieldLabel, FieldDescription } from "@/components/ui/field";
+import React from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Input } from "@/components/ui/input";
-import { ChevronLeft } from 'lucide-react';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ShieldCheck } from 'lucide-react';
+import { AuthInfoSchema, IAuthInfoForm } from '@/types/form';
 
-import { IAuthInfoForm } from '@/types/forms';
-
-const defaultInitialData: IAuthInfoForm = {
-    adminRole: 'Administrator',
-    adminEmail: '',
-    password: '',
-    confirmPassword: '',
-};
-
-
-interface StepProps {
-    initialData: IAuthInfoForm;
-    onSubmit: (data: Omit<IAuthInfoForm, 'confirmPassword'>) => void;
-    goToPreviousStep: () => void;
+interface StepAuthProps {
+  initialData: any;
+  onFinalSubmit: (data: IAuthInfoForm) => Promise<void>;
+  goToPreviousStep: () => void;
 }
 
-const StepAuthInfo: React.FC<StepProps> = ({ initialData, onSubmit, goToPreviousStep }) => {
+export default function StepAuthInfo({ initialData, onFinalSubmit, goToPreviousStep }: StepAuthProps) {
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<IAuthInfoForm>({
+    resolver: zodResolver(AuthInfoSchema),
+    defaultValues: {
+      adminEmail: initialData.hospitalEmail || '', // On pré-remplit avec l'email de l'hôpital par défaut
+      adminRole: 'Hospital Admin', // Forcé selon votre consigne
+      password: '',
+      confirmPassword: ''
+    }
+  });
 
-    // 🎯 CORRECTION : Typage du state avec IAuthInfoForm
-    const [data, setData] = useState<IAuthInfoForm>({
-        adminRole: initialData.adminRole || defaultInitialData.adminRole,
-        adminEmail: initialData.adminEmail || defaultInitialData.adminEmail,
-        password: initialData.password || defaultInitialData.password,
-        confirmPassword: initialData.confirmPassword || defaultInitialData.confirmPassword,
-    });
+  return (
+    <form onSubmit={handleSubmit(onFinalSubmit)} className="space-y-4 animate-in fade-in slide-in-from-right-4">
+      <div className="bg-blue-50 p-4 rounded-lg flex items-start gap-3 mb-6">
+        <ShieldCheck className="text-[#058D66] mt-1" size={20} />
+        <p className="text-sm text-slate-600">
+          Ces identifiants vous permettront de gérer votre établissement sur la plateforme en tant qu'<strong>Administrateur</strong>.
+        </p>
+      </div>
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { id, value } = e.target;
-        // La validation d'ID est implicite grâce au typage
-        setData((prev: IAuthInfoForm) => ({ ...prev, [id]: value }));
-    };
+      <div className="space-y-2">
+        <Label className="font-semibold text-[#3E3E3E]">Email Administrateur</Label>
+        <Input
+          {...register('adminEmail')}
+          type="email"
+          placeholder="admin@hospicare.com"
+          className={errors.adminEmail ? "border-red-500" : ""}
+        />
+        {errors.adminEmail && <p className="text-xs text-red-500">{errors.adminEmail.message}</p>}
+      </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label className="font-semibold text-[#3E3E3E]">Mot de passe</Label>
+          <Input
+            {...register('password')}
+            type="password"
+            placeholder="********"
+            className={errors.password ? "border-red-500" : ""}
+          />
+          {errors.password && <p className="text-xs text-red-500">{errors.password.message}</p>}
+        </div>
+        <div className="space-y-2">
+          <Label className="font-semibold text-[#3E3E3E]">Confirmer</Label>
+          <Input
+            {...register('confirmPassword')}
+            type="password"
+            placeholder="********"
+            className={errors.confirmPassword ? "border-red-500" : ""}
+          />
+          {errors.confirmPassword && <p className="text-xs text-red-500">{errors.confirmPassword.message}</p>}
+        </div>
+      </div>
 
-    const handleSelectChange = (value: string) => {
-        const adminRole = value as IAuthInfoForm['adminRole'];
-        setData((prev: IAuthInfoForm) => ({ ...prev, adminRole }));
-    };
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-
-        // Validation basique (à remplacer par Zod)
-        if (data.password !== data.confirmPassword) {
-            alert("Les mots de passe ne correspondent pas.");
-            return;
-        }
-        if (!data.adminEmail || !data.password) {
-            alert("Veuillez remplir tous les champs.");
-            return;
-        }
-
-        // On soumet uniquement les données d'auth + le rôle
-        // Omit<IAuthInfoForm, 'confirmPassword'> est utilisé dans StepProps pour typer la sortie
-        const { confirmPassword, ...submitData } = data;
-        onSubmit(submitData);
-    };
-
-    return (
-        <form onSubmit={handleSubmit} className="space-y-6">
-            <FieldGroup>
-
-                {/* 1. Champ Rôle */}
-                <Field>
-                    <FieldLabel htmlFor="adminRole">Rôle</FieldLabel>
-                    <Select required name="adminRole" value={data.adminRole} onValueChange={handleSelectChange}>
-                        <SelectTrigger id="adminRole">
-                            <SelectValue placeholder="Sélectionnez votre rôle" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="Administrator">Administrateur</SelectItem>
-                            <SelectItem value="Doctor">Docteur</SelectItem>
-                            <SelectItem value="Cashier">Caissier</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </Field>
-
-                {/* 2. Email de l'Administrateur */}
-                <Field>
-                    {/* 🎯 CORRECTION : Remplacement de l'apostrophe dans le label */}
-                    <FieldLabel htmlFor="adminEmail">Email de l&apos;Administrateur</FieldLabel>
-                    <Input
-                        id="adminEmail"
-                        type="email"
-                        placeholder="admin@hospicare.com"
-                        required
-                        value={data.adminEmail}
-                        onChange={handleChange}
-                    />
-                    <FieldDescription>Cet email servira pour la connexion.</FieldDescription>
-                </Field>
-
-                {/* 3. Mot de Passe */}
-                <Field>
-                    <FieldLabel htmlFor="password">Mot de passe</FieldLabel>
-                    <Input
-                        id="password"
-                        type="password"
-                        required
-                        value={data.password}
-                        onChange={handleChange}
-                    />
-                    <FieldDescription>Doit contenir au moins 8 caractères.</FieldDescription>
-                </Field>
-
-                {/* 4. Confirmation du Mot de Passe */}
-                <Field>
-                    <FieldLabel htmlFor="confirmPassword">Confirmer le Mot de passe</FieldLabel>
-                    <Input
-                        id="confirmPassword"
-                        type="password"
-                        required
-                        value={data.confirmPassword}
-                        onChange={handleChange}
-                    />
-                </Field>
-
-                {/* Boutons de navigation */}
-                <div className="flex justify-between w-full pt-4">
-                    <Button
-                        type="button"
-                        onClick={goToPreviousStep}
-                        variant="outline"
-                    >
-                        <ChevronLeft size={16} className="mr-2" /> Retour
-                    </Button>
-                    <Button
-                        type="submit"
-                    >
-                        Créer le Compte
-                    </Button>
-                </div>
-
-                <div className="text-center pt-4">
-                    <FieldDescription className="text-center text-sm">
-                        Déjà un compte ? <a href="#" className="text-blue-600 hover:text-blue-700 hover:underline">Connectez-vous</a>
-                    </FieldDescription>
-                </div>
-            </FieldGroup>
-        </form>
-    );
-};
-
-export default StepAuthInfo;
+      <div className="flex gap-4 pt-6">
+        <Button
+          type="button"
+          variant="outline"
+          className="flex-1"
+          onClick={goToPreviousStep}
+          disabled={isSubmitting}
+        >
+          <ChevronLeft className="mr-2 h-4 w-4" /> Retour
+        </Button>
+        <Button
+          type="submit"
+          className="flex-1 bg-[#058D66] text-white font-bold"
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "Création..." : "Finaliser l'inscription"}
+        </Button>
+      </div>
+    </form>
+  );
+}

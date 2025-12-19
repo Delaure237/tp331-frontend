@@ -1,24 +1,25 @@
-// src/services/api-utils.ts
-
 export async function handleApiResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
-        // On essaie de récupérer le message d'erreur du backend
         let errorMessage = 'Une erreur est survenue';
         try {
             const errorData = await response.json();
             errorMessage = errorData.message || errorMessage;
         } catch {
-       
             errorMessage = response.statusText;
         }
-
         throw new Error(errorMessage);
     }
 
-    // Si la réponse est 204 (No Content), on renvoie un objet vide typé
+    // Si 204, on s'assure que ce n'est pas une erreur de logique
     if (response.status === 204) {
+        console.warn(" Réponse 204 reçue : le body est vide.");
         return {} as T;
     }
 
-    return response.json();
+    const data = await response.json();
+
+    // DEBUG PRAGMATIQUE : Ajoutez ce log pour voir ce que le front reçoit réellement
+    console.log(" API Response Data:", data);
+
+    return data;
 }

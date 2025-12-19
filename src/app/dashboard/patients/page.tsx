@@ -1,76 +1,90 @@
-'use client';
+"use client";
 
 import React, { useState, useEffect } from "react";
-import PatientStatCard from "@/components/stat-cards/patient-stat-card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useSearchParams } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import { Search, PlusCircle } from "lucide-react";
 import { PatientsTable } from "@/app/_components/patient/patients-table";
-import { Patient } from "@/schemas/patient-schema";
-
-// --- Mock Stats ---
-const mockPatientStats = [
-  { iconKey: "users", title: "Patients Totaux", count: 3500, period: "All Time", trend: "up", percentage: "+2.5", subtitle: "vs mois dernier", perspective: "Global" },
-  { iconKey: "userPlus", title: "Nouveaux Patients (30J)", count: 125, period: "This month", trend: "up", percentage: "+15", subtitle: "vs mois dernier", perspective: "Acquisition" },
-  { iconKey: "fileText", title: "Prescriptions en Cours", count: 480, period: "Today", trend: "down", percentage: "-0.8", subtitle: "vs hier", perspective: "Activité" },
-  { iconKey: "clock", title: "Rendez-vous Aujourd'hui", count: 18, period: "Today", trend: "up", percentage: "+5", subtitle: "vs hier", perspective: "Planification" },
-];
+import PatientStatCard, { PatientPeriod } from "@/components/stat-cards/patient-stat-card";
+import { getPatientsApi, getPatientStatsApi } from "@/api/patient-api";
 
 export default function PatientsPage() {
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
+    const searchParams = useSearchParams();
+    const [period, setPeriod] = useState<PatientPeriod>("thisMonth");
+    const [forceRefresh, setForceRefresh] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
-  // Exemple fetch mock ou API
-  useEffect(() => {
-    // Simuler fetch patients
-    setPatients([
-      { patientFirstName: "Eric", patientLastName: "Ngatchou", address: "Yaoundé", email: "eric@example.com", phone: "677000000", sex: "Male", dateOfBirth: new Date(), bloodGroup: "O+", height: 175, weight: 70 },
-      { patientFirstName: "Marie", patientLastName: "Tchoumi", address: "Douala", email: "marie@example.com", phone: "699000000", sex: "Female", dateOfBirth: new Date(), bloodGroup: "A+", height: 165, weight: 60 },
-    ]);
-  }, []);
+    const [patients, setPatients] = useState({ data: [], pageCount: 0 });
+    const [stats, setStats] = useState<any[]>([]);
 
-  const filteredPatients = patients.filter(
-    (p) =>
-      p.patientFirstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.patientLastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.phone?.includes(searchTerm)
-  );
+    const page = parseInt(searchParams.get("page") ?? "1");
+    const perPage = parseInt(searchParams.get("perPage") ?? "10");
+    const name = searchParams.get("name") || undefined;
 
-  const handleAddPatientSuccess = (newPatient: Patient) => {
-    setPatients((prev) => [...prev, newPatient]);
-  };
+    // Cette fonction inverse le booléen pour déclencher le useEffect
+    const handleRefresh = () => setForceRefresh(prev => !prev);
 
-  return (
-    <div className="flex flex-col gap-6 p-2 md:p-2">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold">Tableau de Bord Patients</h1>
+    useEffect(() => {
+        const fetchData = async () => {
+            setIsLoading(true);
+            try {
+                const [patientsRes, statsRes] = await Promise.all([
+                    getPatientsApi({ page, limit: perPage, search: name }),
+                    getPatientStatsApi(period)
+                ]);
+                setPatients({
+                    data: patientsRes.patients || [],
+                    pageCount: Math.ceil((patientsRes.total || 0) / perPage),
+                });
+                setStats(statsRes || []);
+            } catch (err) {
+                console.error("Fetch error:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchData();
+    }, [searchParams, forceRefresh, page, perPage, name, period]);
 
-      </div>
+    return (
+        <div className="flex flex-col gap-8 p-6 min-h-screen bg-[#F9FAFB]">
+            <div className="flex flex-col gap-2">
+                <h1 className="text-2xl font-semibold text-[#3E3E3E] lowercase">tableau de bord patients</h1>
+                <p className="text-sm text-gray-500">Gérez vos dossiers patients et suivez les indicateurs clés.</p>
+            </div>
 
-      <Separator />
+            <Separator />
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {mockPatientStats.map((stat, idx) => (
-          <PatientStatCard key={idx} {...stat} isPeriodSelectorVisible={true} />
-        ))}
-      </div>
+            {/* Section Stats */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
+                {stats.map((stat, idx) => (
+                    <div key={idx} className="flex h-full">
+                        <PatientStatCard
+                            {...stat}
+                            period={period}
+                            onPeriodChange={setPeriod}
+                            isPeriodSelectorVisible={true}
+                            className="w-full h-full shadow-sm border-gray-100"
+                        />
+                    </div>
+                ))}
+            </div>
 
-
-      {/* Patients Table */}
-      <div className="rounded-xl border-none bg-card text-card-foreground shadow-sm overflow-auto max-h-[70vh] ">
-        {filteredPatients.length === 0 ? (
-          <div className="p-6 text-center text-muted-foreground">Aucun patient trouvé.</div>
-        ) : (
-          <PatientsTable data={filteredPatients} />
-        )}
-      </div>
-
-      {/* Add Patient Modal */}
-
-    </div>
-  );
+            {/* Section Table */}
+            <div className="flex-1 rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden mt-2">
+                {isLoading && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/50">
+                        <Loader2 className="h-8 w-8 animate-spin text-[#058D66]" />
+                    </div>
+                )}
+                <PatientsTable
+                    data={patients.data}
+                    pageCount={patients.pageCount}
+                    onAddPatientSuccess={handleRefresh}
+                    onDeletePatientSuccess={handleRefresh}
+                    onUpdatePatientSuccess={handleRefresh} 
+                />
+            </div>
+        </div>
+    );
 }

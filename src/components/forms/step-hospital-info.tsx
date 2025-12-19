@@ -2,18 +2,23 @@
 'use client';
 
 import * as React from 'react';
-import { useRef, useCallback, useEffect, useState } from 'react';
+import { useRef, useEffect, useState } from 'react';
+import { z } from 'zod';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { XCircle, GalleryVerticalEnd, ImageIcon, ChevronDown } from 'lucide-react';
+import { ImageIcon, ChevronLeft } from 'lucide-react';
 import { HOSPITAL_SPECIALTIES, IHospitalInfoForm, HospitalInfoSchema } from '@/types/form';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from "@/lib/utils";
 
-// État initial mis à jour
+interface StepProps {
+    initialData: Partial<IHospitalInfoForm>;
+    onSubmit: (data: IHospitalInfoForm) => void;
+    onBack: () => void;
+}
+
 const defaultInitialData: IHospitalInfoForm = {
     hospitalName: '',
     hospitalEmail: '',
@@ -26,13 +31,7 @@ const defaultInitialData: IHospitalInfoForm = {
     hospitalImages: null,
 };
 
-interface StepProps {
-    initialData: Partial<IHospitalInfoForm>;
-    onSubmit: (data: IHospitalInfoForm) => void;
-}
-
-const StepHospitalInfo: React.FC<StepProps> = ({ initialData, onSubmit }) => {
-
+const StepHospitalInfo: React.FC<StepProps> = ({ initialData, onSubmit, onBack }) => {
     const [data, setData] = useState<IHospitalInfoForm>({
         hospitalName: initialData.hospitalName ?? defaultInitialData.hospitalName,
         hospitalEmail: initialData.hospitalEmail ?? defaultInitialData.hospitalEmail,
@@ -44,301 +43,177 @@ const StepHospitalInfo: React.FC<StepProps> = ({ initialData, onSubmit }) => {
         hospitalLogo: initialData.hospitalLogo ?? defaultInitialData.hospitalLogo,
         hospitalImages: initialData.hospitalImages ?? defaultInitialData.hospitalImages,
     });
+
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
     const [imagesPreview, setImagesPreview] = useState<string[]>([]);
-    const [errors, setErrors] = useState<z.ZodIssue[]>([]);
-    const [isPopoverOpen, setIsPopoverOpen] = useState(false); // État du popover
+    const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
     const logoInputRef = useRef<HTMLInputElement>(null);
     const imagesInputRef = useRef<HTMLInputElement>(null);
 
-    // Prévisualisations
+    // Prévisualisation du Logo
     useEffect(() => {
-        if (data.hospitalLogo && data.hospitalLogo.length > 0) {
-            const file = data.hospitalLogo[0];
-            const url = URL.createObjectURL(file);
+        if (data.hospitalLogo instanceof FileList && data.hospitalLogo.length > 0) {
+            const url = URL.createObjectURL(data.hospitalLogo[0]);
             setLogoPreview(url);
             return () => URL.revokeObjectURL(url);
-        } else {
-            setLogoPreview(null);
+        } else if (data.hospitalLogo instanceof File) {
+            const url = URL.createObjectURL(data.hospitalLogo);
+            setLogoPreview(url);
+            return () => URL.revokeObjectURL(url);
         }
+        setLogoPreview(null);
     }, [data.hospitalLogo]);
 
+    // Prévisualisation des Images
     useEffect(() => {
-        if (data.hospitalImages) {
+        if (data.hospitalImages instanceof FileList) {
             const urls = Array.from(data.hospitalImages).map(file => URL.createObjectURL(file));
             setImagesPreview(urls);
             return () => urls.forEach(URL.revokeObjectURL);
-        } else {
-            setImagesPreview([]);
         }
+        setImagesPreview([]);
     }, [data.hospitalImages]);
 
-
-    // Handlers
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        const { id, value, files } = e.target;
-        if (id in data) {
-            const newValue = files || value;
-            setData(prev => ({ ...prev, [id]: newValue }));
-            setErrors(prev => prev.filter(err => err.path[0] !== id));
+        const target = e.target as HTMLInputElement;
+        const { id, value, files } = target;
+        const newValue = files && files.length > 0 ? files : value;
+
+        setData(prev => ({ ...prev, [id]: newValue }));
+        // Nettoyer l'erreur quand l'utilisateur tape
+        if (formErrors[id]) {
+            setFormErrors(prev => {
+                const newErrs = { ...prev };
+                delete newErrs[id];
+                return newErrs;
+            });
         }
     };
 
     const handleServiceToggle = (specialty: string, checked: boolean) => {
-        let updatedServices = checked
+        const updatedServices = checked
             ? [...data.services, specialty]
             : data.services.filter(s => s !== specialty);
-
-        setData(prev => ({ ...prev, services: updatedServices }));
-        setErrors(prev => prev.filter(err => err.path[0] !== 'services'));
+        setData(prev => ({ ...prev, services: updatedServices as any }));
     };
 
-    const clearFile = useCallback((fieldName: 'hospitalLogo' | 'hospitalImages', inputRef: React.RefObject<HTMLInputElement>) => {
-        setData(prev => ({ ...prev, [fieldName]: null }));
-        if (inputRef.current) {
-            inputRef.current.value = '';
-        }
-    }, []);
-
-    const getError = (fieldName: keyof IHospitalInfoForm) => {
-        const error = errors.find(err => err.path[0] === fieldName);
-        return error ? error.message : null;
-    }
-
-    // Affichage des services sélectionnés
-    const displaySelectedServices = () => {
-        if (data.services.length === 0) return "Sélectionnez les services...";
-        if (data.services.length === 1) return data.services[0];
-
-        // Affichage abrégé pour plus d'un
-        return `${data.services[0]}, (+${data.services.length - 1} autres)`;
-    };
-
-
-    // Soumission
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        console.log(" [DEBUG] Tentative de soumission avec les données :", data);
 
         const result = HospitalInfoSchema.safeParse(data);
 
         if (!result.success) {
-            setErrors(result.error.issues);
+            const errorsObj: Record<string, string> = {};
+            result.error.issues.forEach(issue => {
+                const path = issue.path[0] as string;
+                errorsObj[path] = issue.message;
+            });
+
+            console.error(" [DEBUG] Erreurs de validation Zod :", errorsObj);
+            setFormErrors(errorsObj);
             return;
         }
 
-        setErrors([]);
-        onSubmit(result.data as IHospitalInfoForm);
+        console.log(" [DEBUG] Validation réussie, appel de onSubmit");
+        setFormErrors({});
+        onSubmit(data);
     };
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
             <FieldGroup>
-
-                {/* 1. Nom de l'Hôpital & Email */}
-                <Field>
-                    <FieldLabel htmlFor="hospitalName">Nom de l'Hôpital</FieldLabel>
-                    <Input
-                        id="hospitalName"
-                        type="text"
-                        placeholder="HospiCare Central"
-                        required
-                        value={data.hospitalName}
-                        onChange={handleChange}
-                    />
-                    {getError('hospitalName') && <p className="text-red-500 text-sm mt-1">{getError('hospitalName')}</p>}
-                </Field>
-
-                <Field>
-                    <FieldLabel htmlFor="hospitalEmail">Email de Contact</FieldLabel>
-                    <Input
-                        id="hospitalEmail"
-                        type="email"
-                        placeholder="contact@hospicare.com"
-                        required
-                        value={data.hospitalEmail}
-                        onChange={handleChange}
-                    />
-                    {getError('hospitalEmail') && <p className="text-red-500 text-sm mt-1">{getError('hospitalEmail')}</p>}
-                </Field>
-
-                {/* 2. Numéros de Téléphone (Ligne double) */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Field>
-                        <FieldLabel htmlFor="phoneNumber1">Téléphone 1 (Principal)</FieldLabel>
-                        <Input
-                            id="phoneNumber1"
-                            type="tel"
-                            placeholder="+237 6xx-xx-xx-xx"
-                            required
-                            value={data.phoneNumber1}
-                            onChange={handleChange}
-                        />
-                        {getError('phoneNumber1') && <p className="text-red-500 text-sm mt-1">{getError('phoneNumber1')}</p>}
+                        <FieldLabel className={formErrors.hospitalName ? "text-red-500" : ""}>Nom de l&apos;Hôpital</FieldLabel>
+                        <Input id="hospitalName" value={data.hospitalName} onChange={handleChange} className={formErrors.hospitalName ? "border-red-500" : ""} />
+                        {formErrors.hospitalName && <p className="text-xs text-red-500 mt-1">{formErrors.hospitalName}</p>}
                     </Field>
                     <Field>
-                        <FieldLabel htmlFor="phoneNumber2">Téléphone 2 (Optionnel)</FieldLabel>
-                        <Input
-                            id="phoneNumber2"
-                            type="tel"
-                            placeholder="+237 6xx-xx-xx-xx"
-                            value={data.phoneNumber2}
-                            onChange={handleChange}
-                        />
-                        {getError('phoneNumber2') && <p className="text-red-500 text-sm mt-1">{getError('phoneNumber2')}</p>}
+                        <FieldLabel className={formErrors.hospitalEmail ? "text-red-500" : ""}>Email de Contact</FieldLabel>
+                        <Input id="hospitalEmail" type="email" value={data.hospitalEmail} onChange={handleChange} className={formErrors.hospitalEmail ? "border-red-500" : ""} />
+                        {formErrors.hospitalEmail && <p className="text-xs text-red-500 mt-1">{formErrors.hospitalEmail}</p>}
                     </Field>
                 </div>
 
-                {/* 3. Adresse */}
-                <Field>
-                    <FieldLabel htmlFor="address">Adresse Complète</FieldLabel>
-                    <Input
-                        id="address"
-                        type="text"
-                        placeholder="Ex: 123 Rue de la Liberté, Quartier Central"
-                        required
-                        value={data.address}
-                        onChange={handleChange}
-                    />
-                    {getError('address') && <p className="text-red-500 text-sm mt-1">{getError('address')}</p>}
-                </Field>
-
-                {/* 4. Services et Heures d'Ouverture (Ligne double) */}
                 <div className="grid grid-cols-2 gap-4">
                     <Field>
-                        <FieldLabel htmlFor="openingHours">Heures d'Ouverture</FieldLabel>
-                        <Input
-                            id="openingHours"
-                            type="text"
-                            placeholder="Ex: 8h00 - 18h00"
-                            required
-                            value={data.openingHours}
-                            onChange={handleChange}
-                        />
-                        {getError('openingHours') && <p className="text-red-500 text-sm mt-1">{getError('openingHours')}</p>}
+                        <FieldLabel className={formErrors.phoneNumber1 ? "text-red-500" : ""}>Téléphone 1</FieldLabel>
+                        <Input id="phoneNumber1" value={data.phoneNumber1} onChange={handleChange} className={formErrors.phoneNumber1 ? "border-red-500" : ""} />
+                        {formErrors.phoneNumber1 && <p className="text-xs text-red-500 mt-1">{formErrors.phoneNumber1}</p>}
                     </Field>
-
                     <Field>
-                        <FieldLabel htmlFor="services">Services/Spécialités</FieldLabel>
-                        {/* Multi-Select personnalisé utilisant Popover */}
+                        <FieldLabel>Téléphone 2</FieldLabel>
+                        <Input id="phoneNumber2" value={data.phoneNumber2 || ''} onChange={handleChange} />
+                    </Field>
+                </div>
+
+                <Field>
+                    <FieldLabel className={formErrors.address ? "text-red-500" : ""}>Adresse Complète</FieldLabel>
+                    <Input id="address" value={data.address} onChange={handleChange} className={formErrors.address ? "border-red-500" : ""} />
+                    {formErrors.address && <p className="text-xs text-red-500 mt-1">{formErrors.address}</p>}
+                </Field>
+
+                <div className="grid grid-cols-2 gap-4">
+                    <Field>
+                        <FieldLabel className={formErrors.openingHours ? "text-red-500" : ""}>Heures d&apos;Ouverture</FieldLabel>
+                        <Input id="openingHours" placeholder="Ex: 24h/24, 8h-18h" value={data.openingHours} onChange={handleChange} className={formErrors.openingHours ? "border-red-500" : ""} />
+                        {formErrors.openingHours && <p className="text-xs text-red-500 mt-1">{formErrors.openingHours}</p>}
+                    </Field>
+                    <Field>
+                        <FieldLabel className={formErrors.services ? "text-red-500" : ""}>Services</FieldLabel>
                         <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                             <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    role="combobox"
-                                    aria-expanded={isPopoverOpen}
-                                    className="w-full justify-between h-10"
-                                >
-                                    {displaySelectedServices()}
-                                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                <Button variant="outline" className={`w-full justify-between ${formErrors.services ? "border-red-500" : ""}`}>
+                                    {data.services.length > 0 ? `${data.services.length} sélectionnés` : "Choisir..."}
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                                <div className="max-h-60 overflow-y-auto">
-                                    {HOSPITAL_SPECIALTIES.map((specialty) => (
-                                        <div key={specialty} className="flex items-center space-x-2 p-2 hover:bg-gray-50 cursor-pointer">
-                                            <Checkbox
-                                                id={specialty}
-                                                // 🎯 Utilisation des classes personnalisées pour le bleu
-                                                className="h-4 w-4 rounded border-gray-400 checked:bg-green-600 checked:border-green-600 focus-visible:ring-green-600"
-                                                checked={data.services.includes(specialty)}
-                                                onCheckedChange={(checked) => handleServiceToggle(specialty, checked as boolean)}
-                                            />
-                                            <Label htmlFor={specialty} className="text-sm font-medium leading-none cursor-pointer">
-                                                {specialty}
-                                            </Label>
-                                        </div>
-                                    ))}
-                                </div>
+                            <PopoverContent className="w-full p-2 max-h-60 overflow-y-auto">
+                                {HOSPITAL_SPECIALTIES.map((s) => (
+                                    <div key={s} className="flex items-center space-x-2 p-1">
+                                        <Checkbox id={s} checked={data.services.includes(s)} onCheckedChange={(c) => handleServiceToggle(s, c as boolean)} />
+                                        <Label htmlFor={s} className="cursor-pointer">{s}</Label>
+                                    </div>
+                                ))}
                             </PopoverContent>
                         </Popover>
-                        {getError('services') && <p className="text-red-500 text-sm mt-1">{getError('services')}</p>}
+                        {formErrors.services && <p className="text-xs text-red-500 mt-1">{formErrors.services}</p>}
                     </Field>
                 </div>
 
-                {/* 5 & 6. Uploads (Ligne double 30/70) */}
                 <div className="flex gap-4">
-                    {/* Logo (30%) */}
-                    <div className="space-y-2 w-[30%]">
-                        <Label htmlFor="hospitalLogo">Logo (Optionnel)</Label>
-                        <div
-                            className={cn(
-                                `flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors`,
-                                // 🎯 Bordure plus épaisse
-                                `border-gray-400`
-                            )}
-                            onClick={() => logoInputRef.current?.click()}
-                        >
-                            {logoPreview ? (
-                                <div className="relative group w-full h-32 flex items-center justify-center">
-                                    <img src={logoPreview} alt="Logo Preview" className="rounded-md max-h-full max-w-full object-contain" />
-                                    <button
-                                        type="button"
-                                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                                        onClick={(e) => { e.stopPropagation(); clearFile('hospitalLogo', logoInputRef); }}
-                                    >
-                                        <XCircle size={20} />
-                                    </button>
-                                </div>
-                            ) : (
-                                <>
-                                    <GalleryVerticalEnd className="w-10 h-10 text-gray-400" />
-                                    <p className="mt-2 text-sm text-gray-600"><span className="font-semibold">Téléverser</span></p>
-                                    <p className="text-xs text-gray-500">PNG, JPG (Max 10MB)</p>
-                                </>
-                            )}
-                            <input id="hospitalLogo" type="file" accept="image/*" className="hidden" onChange={handleChange} ref={logoInputRef} />
+                    <div className="w-1/3">
+                        <Label>Logo</Label>
+                        <div className="border-2 border-dashed rounded-lg p-2 text-center bg-gray-50 cursor-pointer hover:bg-gray-100" onClick={() => logoInputRef.current?.click()}>
+                            {logoPreview ? <img src={logoPreview} className="h-20 mx-auto object-contain" alt="logo" /> : <ImageIcon className="mx-auto text-gray-400" />}
+                            <input id="hospitalLogo" type="file" className="hidden" ref={logoInputRef} onChange={handleChange} accept="image/*" />
                         </div>
-                        {getError('hospitalLogo') && <p className="text-red-500 text-sm mt-1">{getError('hospitalLogo')}</p>}
                     </div>
-
-                    {/* Images de la Façade (70%) */}
-                    <div className="space-y-2 flex-1 w-[70%]">
-                        <Label htmlFor="hospitalImages">Photos de la Façade (Optionnel, Max 3)</Label>
-                        <div
-                             className={cn(
-                                `flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors`,
-                                `border-gray-400 h-full min-h-[170px]`
-                            )}
-                            onClick={() => imagesInputRef.current?.click()}
-                        >
+                    <div className="flex-1">
+                        <Label>Photos Façade</Label>
+                        <div className="border-2 border-dashed rounded-lg p-2 bg-gray-50 cursor-pointer hover:bg-gray-100" onClick={() => imagesInputRef.current?.click()}>
                             {imagesPreview.length > 0 ? (
-                                <div className="grid grid-cols-3 gap-4 w-full">
-                                    {imagesPreview.map((url, index) => (
-                                        <div key={index} className="relative group aspect-square rounded-md overflow-hidden">
-                                            <img src={url} alt={`Image ${index + 1}`} className="w-full h-full object-cover" />
-                                            <button
-                                                type="button"
-                                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                                                onClick={(e) => { e.stopPropagation(); /* La logique de suppression individuelle est complexe */ }}
-                                            >
-                                                <XCircle size={16} />
-                                            </button>
-                                        </div>
-                                    ))}
-                                    <Button type="button" variant="ghost" className="col-span-3 text-red-500 hover:text-red-700"
-                                        onClick={(e) => { e.stopPropagation(); clearFile('hospitalImages', imagesInputRef); }}>
-                                        Effacer toutes les photos
-                                    </Button>
+                                <div className="flex gap-1 overflow-x-auto">
+                                    {imagesPreview.map((url, i) => <img key={i} src={url} className="h-20 w-20 object-cover rounded" alt="façade" />)}
                                 </div>
                             ) : (
-                                <>
-                                    <ImageIcon className="w-10 h-10 text-gray-400" />
-                                    <p className="mt-2 text-sm text-gray-600"><span className="font-semibold">Cliquez pour téléverser</span> (Multiples)</p>
-                                    <p className="text-xs text-gray-500">PNG, JPG (Max 10MB)</p>
-                                </>
+                                <div className="text-center text-gray-400 py-4">Ajouter des photos...</div>
                             )}
-                            <input id="hospitalImages" type="file" accept="image/*" multiple className="hidden" onChange={handleChange} ref={imagesInputRef} />
+                            <input id="hospitalImages" type="file" multiple className="hidden" ref={imagesInputRef} onChange={handleChange} accept="image/*" />
                         </div>
-                        {getError('hospitalImages') && <p className="text-red-500 text-sm mt-1">{getError('hospitalImages')}</p>}
                     </div>
                 </div>
 
-
-                {/* Bouton de navigation */}
-                <Button type="submit" className="w-full mt-6 bg-[#058D66] hover:bg-[#058D66]/90">
-                    Étape suivante
-                </Button>
+                <div className="flex gap-4 pt-4">
+                    <Button type="button" variant="outline" className="flex-1" onClick={onBack}>
+                        <ChevronLeft className="mr-2 h-4 w-4" /> Retour
+                    </Button>
+                    <Button type="submit" className="flex-1 bg-[#058D66] hover:bg-[#047a57] text-white font-bold">
+                        Suivant
+                    </Button>
+                </div>
             </FieldGroup>
         </form>
     );

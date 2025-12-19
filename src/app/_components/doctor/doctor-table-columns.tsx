@@ -1,172 +1,188 @@
-// src/app/doctor/doctor-table-columns.tsx
 "use client";
 
+import * as React from "react";
 import { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Trash2, Eye, Ellipsis } from "lucide-react";
-import Image from "next/image";
+import { Ellipsis, Pencil, Trash2, Eye, User } from "lucide-react";
 
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { DataTableRowAction } from "@/types/data-table";
 import {
-    DropdownMenu,
-    DropdownMenuTrigger,
-    DropdownMenuContent,
-    DropdownMenuItem,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { generateAvatarProps } from "@/app/_lib/generate-avatar-profile";
 
-
-// Définition de la structure des données pour un docteur
-export interface DoctorRowData {
-    id: string;
-    name: string;
-    department: string;
-    specialist: string;
-    degree: string;
-    email: string;
-    phone: string;
-    joinDate: Date;
-    imageUrl?: string;
-}
+// Type aligné sur le backend (HospitalDoctor avec jointure User)
+export type DoctorRowData = any;
 
 interface GetDoctorColumnsProps {
-    setRowAction: React.Dispatch<React.SetStateAction<DataTableRowAction<DoctorRowData> | null>>;
+  setRowAction: React.Dispatch<
+    React.SetStateAction<DataTableRowAction<DoctorRowData> | null>
+  >;
 }
 
 const labels = {
-    selectAll: "Sélectionner tout",
-    selectRow: "Sélectionner la ligne",
-    doctor: "Docteur",
-    department: "Département",
-    specialist: "Spécialiste",
-    degree: "Diplôme",
-    email: "E-mail",
-    phone: "Téléphone",
-    joinDate: "Date d'Adhésion",
-    actions: "Actions",
-    view: "Voir Profil",
-    edit: "Modifier",
-    delete: "Supprimer",
-    openMenu: "Ouvrir menu",
+  selectAll: "tout sélectionner",
+  selectRow: "sélectionner la ligne",
+  doctor: "docteur",
+  specialty: "spécialité",
+  contact: "contact",
+  joinDate: "adhésion",
+  actions: "actions",
+  view: "voir profil",
+  edit: "modifier",
+  delete: "supprimer",
+  openMenu: "ouvrir le menu",
 };
 
-export function getDoctorsTableColumns({ setRowAction }: GetDoctorColumnsProps): ColumnDef<DoctorRowData>[] {
-    return [
-        // Colonne Checkbox (Sélection)
-        {
-            id: "select",
-            header: ({ table }) => (
-                <div className="flex items-center justify-center">
-                    <Checkbox
-                        checked={table.getIsAllPageRowsSelected()}
-                        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-                        aria-label={labels.selectAll}
-                        className="cursor-pointer h-4 w-4"
-                    />
-                </div>
-            ),
-            cell: ({ row }) => (
-                <div className="flex items-center justify-center">
-                    <Checkbox
-                        checked={row.getIsSelected()}
-                        onCheckedChange={(value) => row.toggleSelected(!!value)}
-                        aria-label={labels.selectRow}
-                        className="cursor-pointer h-4 w-4"
-                    />
-                </div>
-            ),
-            enableSorting: false,
-            enableHiding: false,
-            size: 40,
-        },
-        // Colonne Docteur (Image + Nom)
-        {
-            accessorKey: "name",
-            id: "doctor",
-            header: ({ column }) => <DataTableColumnHeader column={column} title={labels.doctor} />,
-            cell: ({ row }) => {
-                const { initials, bgColorClass } = generateAvatarProps(row.original.name);
-                return (
-                    <div className="flex items-center gap-3 min-w-[150px]">
-                        {row.original.imageUrl ? (
-                            <Image
-                                src={row.original.imageUrl}
-                                alt={row.original.name}
-                                width={40}
-                                height={40}
-                                // Bordure subtile pour l'image
-                                className="rounded-full object-cover h-10 w-10 flex-shrink-0 border border-gray-100"
-                            />
-                        ) : (
-                            // Avatar généré en cas d'absence d'image
-                            <div className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-semibold text-white flex-shrink-0 ${bgColorClass}`}>
-                                {initials}
-                            </div>
-                        )}
-                        <div className="truncate font-medium">{row.original.name}</div>
-                    </div>
-                );
-            },
-        },
-        // Colonnes simples (Traduites)
-        {
-            accessorKey: "department",
-            header: ({ column }) => <DataTableColumnHeader column={column} title={labels.department} />,
-            cell: ({ row }) => <div className="truncate">{row.original.department}</div>,
-        },
-        {
-            accessorKey: "specialist",
-            header: ({ column }) => <DataTableColumnHeader column={column} title={labels.specialist} />,
-            cell: ({ row }) => <div className="truncate">{row.original.specialist}</div>,
-        },
-        {
-            accessorKey: "degree",
-            header: ({ column }) => <DataTableColumnHeader column={column} title={labels.degree} />,
-            cell: ({ row }) => <div className="truncate">{row.original.degree}</div>,
-        },
-        {
-            accessorKey: "email",
-            header: ({ column }) => <DataTableColumnHeader column={column} title={labels.email} />,
-            cell: ({ row }) => <div className="truncate">{row.original.email}</div>,
-        },
-        {
-            accessorKey: "phone",
-            header: ({ column }) => <DataTableColumnHeader column={column} title={labels.phone} />,
-            cell: ({ row }) => <div className="truncate">{row.original.phone}</div>,
-        },
-        {
-            accessorKey: "joinDate",
-            header: ({ column }) => <DataTableColumnHeader column={column} title={labels.joinDate} />,
-            cell: ({ row }) => <div className="font-normal">{new Date(row.original.joinDate).toLocaleDateString('fr-FR')}</div>,
-        },
-        // Colonne Action (Menu déroulant - Traduit)
-        {
-            id: "actions",
-            size: 40,
-            cell: ({ row }) => (
-                <div className="flex justify-end">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button aria-label={labels.openMenu} variant="ghost" className="flex h-8 w-8 p-0">
-                                <Ellipsis className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-40">
-                            <DropdownMenuItem onSelect={() => setRowAction({ row, variant: "view" })}>
-                                <Eye className="mr-2 h-4 w-4" /> {labels.view}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => setRowAction({ row, variant: "update" })}>
-                                <Pencil className="mr-2 h-4 w-4" /> {labels.edit}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => setRowAction({ row, variant: "delete" })}>
-                                <Trash2 className="mr-2 h-4 w-4" /> {labels.delete}
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
-            ),
-        },
-    ];
+export function getDoctorsTableColumns({
+  setRowAction,
+}: GetDoctorColumnsProps): ColumnDef<DoctorRowData>[] {
+  return [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <div className="flex items-center justify-center">
+          <Checkbox
+            checked={table.getIsAllPageRowsSelected()}
+            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+            aria-label={labels.selectAll}
+            className="cursor-pointer h-5 w-5 border-2 border-[#058D66] data-[state=checked]:bg-[#058D66] data-[state=checked]:text-white rounded-md"
+          />
+        </div>
+      ),
+      cell: ({ row }) => (
+        <div className="flex items-center justify-center">
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label={labels.selectRow}
+            className="cursor-pointer h-5 w-5 border-2 border-[#058D66] data-[state=checked]:bg-[#058D66] data-[state=checked]:text-white rounded-md"
+          />
+        </div>
+      ),
+      enableSorting: false,
+      enableHiding: false,
+      size: 40,
+    },
+    {
+      accessorFn: (row) => `${row.firstName} ${row.lastName}`,
+      id: "fullName",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={labels.doctor} />
+      ),
+      cell: ({ row }) => {
+        const first = row.original.firstName || "";
+        const last = row.original.lastName || "";
+        const initials = `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
+
+        return (
+          <div className="flex items-center gap-3 py-1">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#F1F5F9] border border-[#86909C]/20 shadow-sm">
+              <span className="text-[12px] font-bold text-[#64748B] tracking-tighter">
+                {initials || <User className="h-4 w-4" />}
+              </span>
+            </div>
+
+            <div className="flex flex-col min-w-0">
+              <span className="font-semibold text-[#3E3E3E] capitalize truncate leading-none mb-1">
+                dr. {first} {last}
+              </span>
+              <span className="text-[11px] text-[#86909C] lowercase truncate">
+                {row.original.contactEmail || row.original.email || "aucun email"}
+              </span>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "specialty",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={labels.specialty} />
+      ),
+      cell: ({ row }) => (
+        <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#058D66]/10 text-[#058D66] capitalize">
+          {row.original.specialty || "généraliste"}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "contactPhone",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={labels.contact} />
+      ),
+      cell: ({ row }) => (
+        <div className="text-[12px] text-[#3E3E3E] tabular-nums font-medium">
+          {row.original.contactPhone || row.original.phone || "—"}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "createdAt",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={labels.joinDate} />
+      ),
+      cell: ({ row }) => (
+        <div className="text-[12px] text-[#86909C] lowercase">
+          {new Date(row.original.createdAt).toLocaleDateString("fr-FR", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          })}
+        </div>
+      ),
+    },
+    {
+      id: "actions",
+      size: 40,
+      cell: ({ row }) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="flex h-8 w-8 p-0 hover:bg-[#F1F5F9] text-[#86909C]"
+            >
+              <Ellipsis className="h-4 w-4" />
+              <span className="sr-only">{labels.openMenu}</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className="w-48 bg-white border-none shadow-2xl rounded-2xl p-1.5"
+          >
+            <DropdownMenuItem
+              className="flex items-center gap-2.5 px-3 py-2.5 cursor-pointer hover:bg-[#F1F5F9] rounded-xl text-[12px] text-[#3E3E3E] transition-colors"
+              onSelect={() => setRowAction({ row, variant: "view" })}
+            >
+              <Eye className="h-4 w-4 text-blue-500" />
+              {labels.view}
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              className="flex items-center gap-2.5 px-3 py-2.5 cursor-pointer hover:bg-[#F1F5F9] rounded-xl text-[12px] text-[#3E3E3E] transition-colors"
+              onSelect={() => setRowAction({ row, variant: "update" })}
+            >
+              <Pencil className="h-4 w-4 text-[#058D66]" />
+              {labels.edit}
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator className="my-1 bg-gray-100" />
+
+            <DropdownMenuItem
+              className="flex items-center gap-2.5 px-3 py-2.5 cursor-pointer hover:bg-red-50 text-red-600 rounded-xl text-[12px] transition-colors"
+              onSelect={() => setRowAction({ row, variant: "delete" })}
+            >
+              <Trash2 className="h-4 w-4" />
+              {labels.delete}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ];
 }

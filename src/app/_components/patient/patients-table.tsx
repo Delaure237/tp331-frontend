@@ -9,16 +9,19 @@ import { DeleteItemsDialog } from "../delete-item-dialog";
 import { ItemsTableToolbarActions } from "../items-table-toolbar-actions";
 import { getPatientsTableColumns, PatientRowData } from "@/app/_components/patient/patient-table-columns";
 import { toast } from "react-hot-toast";
-import { deletePatientsByIds, exportPatients } from "@/api/patients-api";
+import { deletePatientApi, createPatientApi } from "@/api/patient-api";
 import { AddPatientModal } from "./add-patient-modal";
-import { Button } from "@/components/ui/button"; // Importation nécessaire pour le bouton View
-import { Eye } from "lucide-react"; // Importation de l'icône Eye pour le bouton View
+import { EditPatientSheet } from "./edit-patient-sheet";
+import { PatientViewDialog } from "./patient-view-dialog"; // Import du nouveau composant
+import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { Patient } from "@/schemas/patient-schema";
 
 interface PatientsTableProps {
     data: PatientRowData[];
     pageCount: number;
     onAddPatientSuccess: () => void;
     onDeletePatientSuccess: () => void;
+    onUpdatePatientSuccess: () => void;
 }
 
 export function PatientsTable({
@@ -26,26 +29,34 @@ export function PatientsTable({
     pageCount,
     onAddPatientSuccess,
     onDeletePatientSuccess,
+    onUpdatePatientSuccess,
 }: PatientsTableProps) {
+    const queryClient = useQueryClient();
     const [rowAction, setRowAction] = React.useState<DataTableRowAction<PatientRowData> | null>(null);
-    const [isAddPatientModalOpen, setIsAddPatientModalOpen] = React.useState(false);
+    const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
 
-    const columns = React.useMemo(
-        () => getPatientsTableColumns({ setRowAction }),
-        []
-    );
+    const { mutate: addPatient, isPending: isAdding } = useMutation({
+        mutationFn: (newPatient: Patient) => createPatientApi(newPatient),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["patients"], exact: false });
+            toast.success("patient enregistré avec succès");
+            setIsAddModalOpen(false);
+            onAddPatientSuccess();
+        },
+        onError: (error: any) => {
+            toast.error(error.message || "erreur lors de l'enregistrement");
+        },
+    });
 
-    const safeData = data || [];
+    const columns = React.useMemo(() => getPatientsTableColumns({ setRowAction }), []);
 
     const { table, globalFilter, setGlobalFilterDebounced } = useDataTable<PatientRowData>({
-        data: safeData,
+        data: data || [],
         columns,
         pageCount,
         enableAdvancedFilter: false,
-        initialState: {
-            columnPinning: { right: ["actions"] },
-        },
-        getRowId: (originalRow) => originalRow.id,
+        initialState: { columnPinning: { right: ["actions"] } },
+        getRowId: (row) => row.id,
         shallow: false,
         clearOnDefault: true,
     });
@@ -57,63 +68,15 @@ export function PatientsTable({
 
     async function deletePatients(items: PatientRowData[]) {
         try {
-            const idsToDelete = items.map((item) => item.id);
-            await deletePatientsByIds(idsToDelete);
+            await Promise.all(items.map((item) => deletePatientApi(item.id)));
+            queryClient.invalidateQueries({ queryKey: ["patients"], exact: false });
+            toast.success(`${items.length} patient(s) supprimé(s)`);
+            table.toggleAllRowsSelected(false);
             onDeletePatientSuccess();
         } catch (error) {
-            console.error("Failed to delete patients:", error);
+            toast.error("Erreur lors de la suppression");
         }
     }
-
-    function onDeleteSuccess() {
-        toast.success("Patient(s) deleted successfully.");
-        table.toggleAllRowsSelected(false);
-        onDeletePatientSuccess();
-    }
-
-    function onExport(format: "pdf" | "csv") {
-        try {
-            exportPatients(format);
-            toast.success(`Exportation vers ${format.toUpperCase()} initiée avec succès.`);
-        } catch (error) {
-            toast.error("Failed to initiate export.");
-            console.error("Error exporting patients:", error);
-        }
-    }
-
-    const onAdd = () => setIsAddPatientModalOpen(true);
-    const handleModalClose = () => {
-        setIsAddPatientModalOpen(false);
-        onAddPatientSuccess();
-    };
-
-    // Nouvelle fonction: Gérer l'action de "View" (visualiser)
-    const onSingleView = () => {
-        if (selectedItems.length === 1) {
-            const selectedRow = table.getRow(selectedItems[0].id);
-            if (selectedRow) {
-                setRowAction({ row: selectedRow, variant: "view" });
-            }
-        } else {
-            toast.error("Veuillez sélectionner un seul patient à visualiser.");
-        }
-    };
-
-    // Création du bouton View pour l'injection via additionalActions
-    const viewButton = (
-        <Button
-            variant="outline"
-            size="sm"
-            aria-label="View selected patient"
-            onClick={onSingleView}
-            // Le bouton est actif uniquement si UN seul élément est sélectionné
-            disabled={selectedItems.length !== 1}
-            className="focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none"
-        >
-            <Eye className="mr-2 h-4 w-4" />
-            View
-        </Button>
-    );
 
     return (
         <>
@@ -122,62 +85,64 @@ export function PatientsTable({
                 actionBar={
                     <div className="flex w-full flex-col gap-2">
                         <div className="flex w-full items-center justify-between">
-                            {/* Recherche globale */}
                             <input
-                                placeholder="Rechercher par nom..."
+                                placeholder="rechercher par nom..."
                                 value={(globalFilter as string) ?? ""}
-                                onChange={(event) => setGlobalFilterDebounced(event.target.value)}
-                                className="max-w-xs h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                onChange={(e) => setGlobalFilterDebounced(e.target.value)}
+                                className="max-w-xs h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:ring-1 focus-visible:ring-[#058D66] outline-none"
                             />
-
-                            {/* Actions globales (Add, Delete, Export, View) */}
                             <ItemsTableToolbarActions<PatientRowData>
                                 table={table}
                                 deleteAction={deletePatients}
-                                onDeleteSuccess={onDeleteSuccess}
-                                onExport={onExport}
+                                onDeleteSuccess={() => {}}
+                                onExport={() => {}}
                                 exportFilename="patients"
-                                onAdd={onAdd}
-                                addLabel="Add a patient"
+                                onAdd={() => setIsAddModalOpen(true)}
+                                addLabel="ajouter un patient"
                                 showAddButton={true}
                                 selectedItems={selectedItems}
-                                // Injection du bouton View pour qu'il soit sur la même ligne
-                                additionalActions={viewButton}
                             />
                         </div>
-
-                        {/* Filtres simples */}
                         <DataTableToolbar table={table} className="p-0" />
                     </div>
                 }
             />
 
-            {/* Modale d'ajout de patient */}
+            {/* 1. Modal de Création */}
             <AddPatientModal
-                isOpen={isAddPatientModalOpen}
-                onClose={handleModalClose}
+                isOpen={isAddModalOpen}
+                isSubmitting={isAdding}
+                onClose={() => setIsAddModalOpen(false)}
+                onAddPatient={(data) => addPatient(data)}
             />
 
-            {/* Dialogue de suppression d'une ligne spécifique */}
+            {/* 2. Vue Détails Patient (Bento Grid) */}
+            <PatientViewDialog
+                open={rowAction?.variant === "view"}
+                onOpenChange={(open) => !open && setRowAction(null)}
+                patient={rowAction?.row.original ?? null}
+            />
+
+            {/* 3. Modification Patient */}
+            <EditPatientSheet
+                open={rowAction?.variant === "update"}
+                onOpenChange={(open) => !open && setRowAction(null)}
+                patient={rowAction?.row.original ?? null}
+                onUpdateSuccess={onUpdatePatientSuccess}
+            />
+
+            {/* 4. Suppression Patient */}
             <DeleteItemsDialog
                 open={rowAction?.variant === "delete"}
-                onOpenChange={(open) => {
-                    if (!open) setRowAction(null);
-                }}
+                onOpenChange={(open) => !open && setRowAction(null)}
                 items={rowAction?.row.original ? [rowAction.row.original] : []}
                 deleteAction={deletePatients}
                 showTrigger={false}
-                onSuccess={onDeleteSuccess}
+                onSuccess={() => {
+                    setRowAction(null);
+                    onDeletePatientSuccess();
+                }}
             />
-
-            {/* Si View est une modale/un tiroir, vous devrez le gérer ici via rowAction?.variant === "view" */}
-            {/* Par exemple:
-            <ViewPatientDrawer
-                open={rowAction?.variant === "view"}
-                onOpenChange={(open) => { if (!open) setRowAction(null); }}
-                patient={rowAction?.row.original}
-            />
-            */}
         </>
     );
 }

@@ -33,7 +33,7 @@ export const HospitalInfoSchema = z.object({
   phoneNumber1: z.string().min(8, "Veuillez entrer un numéro de téléphone valide."),
   phoneNumber2: z.string().optional().or(z.literal('')),
   address: z.string().min(10, "Veuillez entrer une adresse complète."),
-  openingHours: z.string().min(3, "Veuillez indiquer les heures d'ouverture."),
+  openingHours: z.string().default("24/7"),
 
   services: z
     .array(z.enum(HOSPITAL_SPECIALTIES))
@@ -46,20 +46,15 @@ export const HospitalInfoSchema = z.object({
 /**
  * Schéma Zod Étape 2 : Informations d'Authentification
  */
-export const AuthInfoSchema = z
-  .object({
-    adminRole: z.enum(
-        ['Administrateur', 'Docteur', 'Caissier', 'Patient'],
-        { invalid_type_error: "Veuillez sélectionner un rôle valide." }
-    ),
-    adminEmail: z.string().email("Format d'email invalide."),
-    password: z.string().min(8, "Le mot de passe doit contenir au moins 8 caractères."),
-    confirmPassword: z.string().min(1, "Veuillez confirmer votre mot de passe."),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Les mots de passe ne correspondent pas.",
-    path: ["confirmPassword"],
-  });
+export const AuthInfoSchema = z.object({
+  adminRole: z.enum(['Administrator', 'Administrateur', 'Docteur', 'Caissier', 'Patient' , 'Hospital Admin']),
+  adminEmail: z.string().email("Email invalide"),
+  password: z.string().min(8, "Minimum 8 caractères"),
+  confirmPassword: z.string()
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Les mots de passe ne correspondent pas",
+  path: ["confirmPassword"],
+});
 
 /* ========================================================================
    AJOUT DES EXPORTS DE TYPES (Pour corriger vos erreurs)

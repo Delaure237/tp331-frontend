@@ -16,6 +16,10 @@ Assure que le padding et la bordure ne s'ajoutent pas à la largeur ou à la hau
 PALETTE DE COULEURS CUSTOM
 ===================================================================
 */
+/* À ajouter dans votre CSS pour que la modal de paiement soit visible */
+#campay-modal-container {
+  z-index: 9999 !important;
+}
 
 :root {
 
